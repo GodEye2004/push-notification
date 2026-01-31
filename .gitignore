@@ -1,0 +1,37 @@
+# Node.js
+node_modules/
+npm-debug.log
+.env
+service-account-key.json
+
+# Next.js
+.next/
+out/
+build/
+panel/node_modules/
+panel/.next/
+panel/out/
+panel/build/
+
+# Flutter
+client_app/.dart_tool/
+client_app/.flutter-plugins
+client_app/.flutter-plugins-dependencies
+client_app/.pub-cache/
+client_app/.pub/
+client_app/build/
+client_app/ios/Flutter/Generated.xcconfig
+client_app/ios/Flutter/Flutter.framework
+client_app/ios/Flutter/Flutter.podspec
+client_app/android/.gradle/
+client_app/android/app/google-services.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Gemini/Antigravity internal tracking
+.gemini/
+.gemini_data/
+.agent/
+brain/
