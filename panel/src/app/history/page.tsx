@@ -10,7 +10,7 @@ export default function HistoryPage() {
 
     const fetchHistory = async () => {
         try {
-            const res = await fetch('http://localhost:5001/api/status');
+            const res = await fetch('http://192.168.100.102:5001/api/status');
             const data = await res.json();
             setHistory(data.history);
         } catch (err) {

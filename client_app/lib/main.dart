@@ -85,7 +85,7 @@ void onStart(ServiceInstance service) async {
   });
 
   // Connect to our Node.js server
-  final String serverUrl = "http://10.0.2.2:5001";
+  final String serverUrl = "http://192.168.100.102:5001";
 
   IO.Socket socket = IO.io(
     serverUrl,
