@@ -7,6 +7,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -105,6 +106,7 @@ void onStart(ServiceInstance service) async {
         title: "Push Service",
         content: "Connected to server - listening...",
       );
+      service.invoke("socket_id", {"id": socket.id});
     }
   });
 
@@ -123,24 +125,54 @@ void onStart(ServiceInstance service) async {
   socket.on('push-notification', (data) {
     print('Received notification event: $data');
 
-    localNotifications.show(
-      id: DateTime.now().millisecond % 100000,
-      title: data['title']?.toString() ?? 'Background Alert',
-      body: data['body']?.toString() ?? 'Notification received!',
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'push_notifications_channel',
-          'Push Notifications',
-          channelDescription: 'Real-time notifications',
-          importance: Importance.max,
-          priority: Priority.high,
-          showWhen: true,
+    // Parse notification content
+    String? title;
+    String? body;
+
+    // Backend sends: { notification: { title, body }, ... }
+    if (data['notification'] != null && data['notification'] is Map) {
+      final notification = data['notification'];
+      title = notification['title']?.toString();
+      body = notification['body']?.toString();
+    } else {
+      // Fallback if structure is flat
+      title = data['title']?.toString();
+      body = data['body']?.toString();
+    }
+
+    title ??= 'New Message';
+    body ??= 'You have a new notification';
+
+    try {
+      localNotifications.show(
+        id: DateTime.now().millisecond % 100000,
+        title: title,
+        body: body,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'push_notifications_channel',
+            'Push Notifications',
+            channelDescription: 'Real-time notifications',
+            importance: Importance.max,
+            priority: Priority.high,
+            showWhen: true,
+          ),
         ),
-      ),
-    );
+      );
+      print("Notification shown: $title - $body");
+    } catch (e) {
+      print("Error showing notification: $e");
+    }
   });
 
   socket.onDisconnect((_) => print('Disconnected from server'));
+
+  // Listen for request from UI to get socket ID
+  service.on('get_socket_id').listen((event) {
+    if (socket.connected && socket.id != null) {
+      service.invoke("socket_id", {"id": socket.id});
+    }
+  });
 
   // Keep the service alive
   Timer.periodic(const Duration(seconds: 1), (timer) async {
@@ -181,12 +213,29 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String _status = "Checking...";
+  String _status = "Idle";
+  final TextEditingController _appIdController = TextEditingController();
+  final String serverUrl = "http://10.0.2.2:5001"; // Android Emulator
+
+  String? _socketId;
 
   @override
   void initState() {
     super.initState();
     _requestPermission();
+
+    // Listen for socket ID from background service
+    FlutterBackgroundService().on('socket_id').listen((event) {
+      if (event != null && event['id'] != null) {
+        setState(() {
+          _socketId = event['id'];
+          _status = "Service Connected. Ready to Register.";
+        });
+      }
+    });
+
+    // Ask for it immediately
+    FlutterBackgroundService().invoke("get_socket_id");
   }
 
   Future<void> _requestPermission() async {
@@ -201,54 +250,107 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<void> _triggerNotification() async {
-    setState(() => _status = "Sending...");
+  Future<void> _registerDevice() async {
+    final appId = _appIdController.text.trim();
+    if (appId.isEmpty) {
+      setState(() => _status = "Please enter App ID");
+      return;
+    }
+
+    setState(() => _status = "Registering...");
+
     try {
-      // Note: If using real device, replace 10.0.2.2 with your computer's IP
-      final response = await http
-          .post(Uri.parse('http://10.0.2.2:5001/send-notification'))
-          .timeout(const Duration(seconds: 5));
+      // Use real socket ID if available, otherwise fallback (which will likely fail for targeting)
+      String pushToken = _socketId ?? "waiting-for-socket-id";
+
+      if (_socketId == null) {
+        // Try to get it one last time?
+        // For now just warn user in status, but proceed to try
+        setState(() => _status = "Warning: No Socket ID yet...");
+      }
+
+      final body = {
+        "app_id": appId,
+        "device_id": "flutter_device_${DateTime.now().millisecondsSinceEpoch}",
+        "platform": "android",
+        "os_version": "14.0",
+        "app_version": "1.0.0",
+        "device_model": "Emulator",
+        "push_token": pushToken,
+      };
+
+      final response = await http.post(
+        Uri.parse('$serverUrl/register-device'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body), // Requires import 'dart:convert';
+      );
 
       if (response.statusCode == 200) {
-        setState(() => _status = "Trigger sent! Check status bar.");
+        final data = jsonDecode(response.body);
+        setState(() => _status = "Registered! ID: ${data['device_id']}");
       } else {
-        setState(() => _status = "Server Error: ${response.statusCode}");
+        setState(() => _status = "Error: ${response.statusCode}");
       }
     } catch (e) {
-      setState(() => _status = "Connect Error: $e\n(Check IP address)");
+      setState(() => _status = "Connection Error: $e");
     }
+  }
+
+  Future<void> _triggerNotification() async {
+    // Keeping this for manual testing if needed, but primary flow is now Registration -> Wait for Push
+    setState(() => _status = "Sending Broadcast Trigger...");
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$serverUrl/send-notification'),
+          ) // This endpoint needs specific args now, might fail if called without valid body
+          .timeout(const Duration(seconds: 5));
+      // ... handling ...
+    } catch (e) {}
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('No-Firebase Push')),
-      body: Center(
+      appBar: AppBar(title: const Text('Push Client')),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             const Icon(
-              Icons.notifications_active,
-              size: 80,
+              Icons.phonelink_setup,
+              size: 60,
               color: Colors.deepPurple,
             ),
+            const SizedBox(height: 30),
+            TextField(
+              controller: _appIdController,
+              decoration: const InputDecoration(
+                labelText: "Enter App ID from Panel",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.apps),
+              ),
+            ),
             const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _registerDevice,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: const Text('Register Device'),
+            ),
+            const SizedBox(height: 30),
             Text(
               'Status: $_status',
-              style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 40),
-            ElevatedButton(
-              onPressed: _triggerNotification,
-              child: const Text('Send Test Notification (Broadcast)'),
-            ),
-            const Padding(
-              padding: EdgeInsets.all(20.0),
-              child: Text(
-                'Even if you close this app (Swipe away), the background service stays alive and listens for notifications from the server.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              ),
+            const Spacer(),
+            const Text(
+              'Keep the app open or in background to receive notifications via Socket.io bridge.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
           ],
         ),

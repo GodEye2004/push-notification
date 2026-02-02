@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Book, Code, Terminal, Globe, Smartphone, Copy, Check } from "lucide-react";
-import { motion } from "framer-motion";
+import { Book, Code, Terminal, Globe, Smartphone, Copy, Check, Server, Key } from "lucide-react";
 
 export default function DocsPage() {
-    const [activeTab, setActiveTab] = useState("flutter");
+    const [activeTab, setActiveTab] = useState("api");
     const [copied, setCopied] = useState<string | null>(null);
 
     const copyToClipboard = (text: string, id: string) => {
@@ -14,67 +13,105 @@ export default function DocsPage() {
         setTimeout(() => setCopied(null), 2000);
     };
 
-    const platforms = [
-        { id: "flutter", name: "Flutter", icon: Smartphone },
-        { id: "web", name: "Web / JS", icon: Globe },
-        { id: "api", name: "Rest API / CURL", icon: Terminal },
+    const tabs = [
+        { id: "api", name: "REST API Workflow", icon: Server },
+        { id: "flutter", name: "Flutter Integration", icon: Smartphone },
+        { id: "android", name: "Android Native", icon: Terminal },
     ];
 
-    const codeSnippets = {
-        flutter: `// Add socket_io_client to pubspec.yaml
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+    const snippets = {
+        api: `// 1. Register App
+curl -X POST http://localhost:5001/register-app \\
+  -H "Content-Type: application/json" \\
+  -d '{ "app_name": "My App", "package_name": "com.example" }'
 
-void connectToServer() {
-  IO.Socket socket = IO.io('http://YOUR_SERVER_IP:5001', 
-    IO.OptionBuilder()
-      .setTransports(['websocket'])
-      .setQuery({'platform': 'android'})
-      .build()
+// Response: { "app_id": "UUID", "api_key": "KEY", ... }
+
+// 2. Register Device
+curl -X POST http://localhost:5001/register-device \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "app_id": "YOUR_APP_ID",
+    "device_id": "UNIQUE_DEVICE_ID",
+    "platform": "android",
+    "os_version": "14",
+    "app_version": "1.0.0",
+    "device_model": "Pixel 7",
+    "push_token": "FCM_TOKEN"
+  }'
+
+// 3. Send Notification
+curl -X POST http://localhost:5001/send-notification \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "app_id": "YOUR_APP_ID",
+    "api_key": "YOUR_API_KEY",
+    "targets": "all",
+    "notification": { "title": "Hello", "body": "World" }
+  }'`,
+        flutter: `import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+Future<void> registerDevice() async {
+  final url = Uri.parse('http://YOUR_SERVER_IP:5001/register-device');
+  
+  // Get these from your device info plugin
+  final deviceData = {
+    "app_id": "YOUR_APP_ID_FROM_PANEL",
+    "device_id": "unique-device-id",
+    "platform": "android", // or ios
+    "os_version": "14.0",
+    "app_version": "1.0.0",
+    "device_model": "Pixel 7",
+    "push_token": "FCM_TOKEN", // Get from Firebase Messaging
+  };
+
+  final response = await http.post(
+    url,
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode(deviceData),
   );
 
-  socket.on('push-notification', (data) {
-    print('Received: \${data["title"]}');
-    // Show local notification here
-  });
+  if (response.statusCode == 200) {
+    print("Device registered!");
+  } else {
+    print("Error: \${response.body}");
+  }
 }`,
-        web: `// Include Socket.io client
-import { io } from "socket.io-client";
+        android: `// Kotlin / OkHttp
+val json = JSONObject().apply {
+    put("app_id", "YOUR_APP_ID_FROM_PANEL")
+    put("device_id", "unique_id")
+    put("platform", "android")
+    put("push_token", fcmToken)
+    // ... other fields
+}
 
-const socket = io("http://localhost:5001", {
-  query: { platform: "web" }
-});
+val request = Request.Builder()
+    .url("http://YOUR_SERVER_IP:5001/register-device")
+    .post(RequestBody.create(MediaType.parse("application/json"), json.toString()))
+    .build()
 
-socket.on("push-notification", (data) => {
-  console.log("New Notification:", data.title);
-  new Notification(data.title, { body: data.body });
-});`,
-        api: `# Send to all devices via Local Bridge
-curl -X POST http://localhost:5001/send-notification \\
-     -H "Content-Type: application/json" \\
-     -d '{
-       "title": "Hello World",
-       "body": "This is a test message",
-       "imageUrl": "https://example.com/img.jpg"
-     }'`
+client.newCall(request).execute()`
     };
 
     return (
         <div className="space-y-8 pb-20">
             <div>
-                <h1 className="text-3xl font-bold text-white mb-2">Developer Documentation</h1>
-                <p className="text-muted-foreground">Learn how to integrate our professional push service into any application.</p>
+                <h1 className="text-3xl font-bold text-white mb-2">Documentation</h1>
+                <p className="text-muted-foreground">Master the 3-step process: Register App &rarr; Register Device &rarr; Send Notification.</p>
             </div>
 
-            <div className="flex gap-4 p-1 bg-white/5 rounded-2xl w-fit">
-                {platforms.map((p) => (
+            <div className="flex flex-wrap gap-4 p-1 bg-white/5 rounded-2xl w-fit">
+                {tabs.map((t) => (
                     <button
-                        key={p.id}
-                        onClick={() => setActiveTab(p.id)}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all font-semibold text-sm ${activeTab === p.id ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-white"
+                        key={t.id}
+                        onClick={() => setActiveTab(t.id)}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl transition-all font-semibold text-sm ${activeTab === t.id ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-white"
                             }`}
                     >
-                        <p.icon className="w-4 h-4" />
-                        {p.name}
+                        <t.icon className="w-4 h-4" />
+                        {t.name}
                     </button>
                 ))}
             </div>
@@ -84,79 +121,49 @@ curl -X POST http://localhost:5001/send-notification \\
                     <div className="glass-card p-8 rounded-3xl relative overflow-hidden">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                <Code className="w-5 h-5 text-primary" /> Integration Snippet
+                                <Code className="w-5 h-5 text-primary" />
+                                {activeTab === 'api' ? 'API Workflows' : 'Client Integration'}
                             </h3>
                             <button
-                                onClick={() => copyToClipboard(codeSnippets[activeTab as keyof typeof codeSnippets], 'snippet')}
+                                onClick={() => copyToClipboard(snippets[activeTab as keyof typeof snippets], 'snippet')}
                                 className="text-muted-foreground hover:text-white transition-colors"
                             >
                                 {copied === 'snippet' ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
                             </button>
                         </div>
-                        <pre className="bg-[#0a0a0a] p-6 rounded-2xl text-sm text-blue-400 overflow-x-auto border border-white/5 font-mono leading-relaxed">
-                            {codeSnippets[activeTab as keyof typeof codeSnippets]}
+                        <pre className="bg-[#0a0a0a] p-6 rounded-2xl text-xs sm:text-sm text-blue-400 overflow-x-auto border border-white/5 font-mono leading-relaxed">
+                            {snippets[activeTab as keyof typeof snippets]}
                         </pre>
-                    </div>
-
-                    <div className="glass-card p-8 rounded-3xl space-y-6">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                            <Book className="w-5 h-5 text-primary" /> Implementation Guide
-                        </h3>
-
-                        <div className="space-y-6 text-muted-foreground">
-                            {activeTab === 'flutter' && (
-                                <>
-                                    <section className="space-y-2">
-                                        <h4 className="text-white font-semibold">1. Setup Background Service</h4>
-                                        <p>Use `flutter_background_service` to keep the Socket.io connection alive even when the app is closed.</p>
-                                    </section>
-                                    <section className="space-y-2">
-                                        <h4 className="text-white font-semibold">2. Initialize Local Notifications</h4>
-                                        <p>When the `push-notification` event is received, use `flutter_local_notifications` to display the alert to the user.</p>
-                                    </section>
-                                </>
-                            )}
-                            {activeTab === 'web' && (
-                                <>
-                                    <section className="space-y-2">
-                                        <h4 className="text-white font-semibold">1. Request Permissions</h4>
-                                        <p>Browser notifications require explicit user permission via `Notification.requestPermission()`.</p>
-                                    </section>
-                                    <section className="space-y-2">
-                                        <h4 className="text-white font-semibold">2. Service Workers</h4>
-                                        <p>For true background notifications on web, integrate with a Service Worker to handle events when the tab is closed.</p>
-                                    </section>
-                                </>
-                            )}
-                            {activeTab === 'api' && (
-                                <>
-                                    <section className="space-y-2">
-                                        <h4 className="text-white font-semibold">Endpoint Security</h4>
-                                        <p>In production, ensure your `/send-notification` endpoint is protected by an API Key or Bearer Token.</p>
-                                    </section>
-                                </>
-                            )}
-                        </div>
                     </div>
                 </div>
 
                 <div className="space-y-6">
                     <div className="glass-card p-6 rounded-2xl bg-primary/5 border-primary/20">
-                        <h4 className="font-bold text-white mb-2">Quick Tip</h4>
+                        <h4 className="font-bold text-white mb-2 flex items-center gap-2">
+                            <Key className="w-4 h-4" /> Authentication
+                        </h4>
                         <p className="text-sm text-muted-foreground leading-relaxed">
-                            Always use a persistent background service for mobile apps. Mobile OS will kill idle socket connections to save battery unless declared as a foreground service.
+                            Sending notifications requires both the <code>app_id</code> and <code>api_key</code>. Keep your API Key secret!
                         </p>
                     </div>
 
                     <div className="glass-card p-6 rounded-2xl space-y-4">
-                        <h4 className="font-bold text-white">Resources</h4>
-                        <ul className="space-y-3">
-                            {['FCM Documentation', 'Socket.io Official Guide', 'Flutter Notifications Plugin'].map((item) => (
-                                <li key={item} className="flex items-center gap-2 text-sm text-primary hover:underline cursor-pointer">
-                                    <Globe className="w-4 h-4" /> {item}
-                                </li>
+                        <h4 className="font-bold text-white">Steps Overview</h4>
+                        <div className="space-y-4 relative before:absolute before:left-2.5 before:top-2 before:h-[80%] before:w-0.5 before:bg-white/10">
+                            {[
+                                { title: "Register App", desc: "Create an app in the Panel to get Keys." },
+                                { title: "Register Device", desc: "Mobile app sends device info + push token to backend." },
+                                { title: "Send Push", desc: "Call /send-notification with target audience." }
+                            ].map((step, i) => (
+                                <div key={i} className="relative z-10 pl-8">
+                                    <div className="absolute left-0 top-1 w-5 h-5 rounded-full bg-black border border-primary text-primary flex items-center justify-center text-[10px] font-bold">
+                                        {i + 1}
+                                    </div>
+                                    <h5 className="text-sm font-bold text-white">{step.title}</h5>
+                                    <p className="text-xs text-muted-foreground">{step.desc}</p>
+                                </div>
                             ))}
-                        </ul>
+                        </div>
                     </div>
                 </div>
             </div>

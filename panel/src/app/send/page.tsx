@@ -1,44 +1,86 @@
 "use client";
 
-import { useState } from "react";
-import { Send, Image as ImageIcon, Target, Globe, Smartphone, Bell, Loader2, CheckCircle2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Send, Image as ImageIcon, Target, Globe, Smartphone, Bell, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { MobilePreview } from "@/components/MobilePreview";
 import { motion } from "framer-motion";
 
+interface App {
+    id: string;
+    app_name: string;
+    package_name: string;
+    api_key: string;
+    device_count?: number;
+}
+
 export default function SendNotificationPage() {
+    const [apps, setApps] = useState<App[]>([]);
     const [formData, setFormData] = useState({
         title: "",
         body: "",
         imageUrl: "",
         targetType: "all",
         token: "",
-        appName: "Pro App",
-        delay: "0"
+        selectedAppId: "",
     });
     const [loading, setLoading] = useState(false);
-    const [success, setSuccess] = useState(false);
+    const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    // Fetch Apps on Load
+    useEffect(() => {
+        fetch('http://localhost:5001/apps')
+            .then(res => res.json())
+            .then(data => {
+                setApps(data);
+                if (data.length > 0) {
+                    setFormData(prev => ({ ...prev, selectedAppId: data[0].id }));
+                }
+            })
+            .catch(err => console.error("Failed to fetch apps:", err));
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        setSuccess(false);
+        setMsg(null);
+
+        const selectedApp = apps.find(a => a.id === formData.selectedAppId);
+        if (!selectedApp) {
+            setMsg({ type: 'error', text: "Please select a valid app." });
+            setLoading(false);
+            return;
+        }
 
         try {
-            const res = await fetch('/api/notify', {
+            const payload = {
+                app_id: selectedApp.id,
+                api_key: selectedApp.api_key,
+                type: formData.targetType === 'all' ? 'all' : 'device',
+                value: formData.targetType === 'all' ? null : formData.token,
+                notification: {
+                    title: formData.title,
+                    body: formData.body,
+                    image: formData.imageUrl || undefined,
+                }
+            };
+
+            const res = await fetch('http://localhost:5001/send-notification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...formData,
-                    target: formData.targetType === 'all' ? 'all' : formData.token
-                }),
+                body: JSON.stringify(payload),
             });
+
             const data = await res.json();
-            if (data.success) {
-                setSuccess(true);
-                setTimeout(() => setSuccess(false), 3000);
+
+            if (data.status === 'sent') {
+                setMsg({ type: 'success', text: `Sent to ${data.sent_to.length} device(s)!` });
+                // Optional: Clear form
+            } else {
+                setMsg({ type: 'error', text: data.error || "Failed to send." });
             }
         } catch (err) {
             console.error(err);
+            setMsg({ type: 'error', text: "Connection error." });
         } finally {
             setLoading(false);
         }
@@ -48,27 +90,35 @@ export default function SendNotificationPage() {
         <div className="space-y-8 pb-20">
             <div>
                 <h1 className="text-3xl font-bold text-white mb-2">Send Push Notification</h1>
-                <p className="text-muted-foreground">Draft and broadcast notifications to your users across different apps.</p>
+                <p className="text-muted-foreground">Broadcast notifications to your users via the active backend.</p>
             </div>
 
             <div className="flex flex-col xl:flex-row gap-12">
                 {/* Form Section */}
                 <div className="flex-1 space-y-8">
                     <form onSubmit={handleSubmit} className="glass-card p-8 rounded-3xl space-y-8">
-                        {/* App Selection Mock */}
+                        {/* App Selection */}
                         <div className="space-y-4">
                             <label className="text-sm font-semibold text-white/70 flex items-center gap-2">
                                 <Bell className="w-4 h-4" /> Destination Application
                             </label>
-                            <select
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-primary/50"
-                                value={formData.appName}
-                                onChange={(e) => setFormData({ ...formData, appName: e.target.value })}
-                            >
-                                <option value="Pro App">Pro App (Android/iOS)</option>
-                                <option value="Store Manager">Store Manager</option>
-                                <option value="Delivery Suite">Delivery Suite</option>
-                            </select>
+                            {apps.length === 0 ? (
+                                <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-sm">
+                                    No apps registered. Go to "Apps" page to create one.
+                                </div>
+                            ) : (
+                                <select
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-primary/50"
+                                    value={formData.selectedAppId}
+                                    onChange={(e) => setFormData({ ...formData, selectedAppId: e.target.value })}
+                                >
+                                    {apps.map(app => (
+                                        <option key={app.id} value={app.id} className="text-black">
+                                            {app.app_name} ({app.device_count || 0} devices)
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
 
                         {/* Content Section */}
@@ -77,7 +127,7 @@ export default function SendNotificationPage() {
                                 <label className="text-sm font-semibold text-white/70">Notification Title</label>
                                 <input
                                     type="text"
-                                    placeholder="e.g. Special Offer Just for You!"
+                                    placeholder="e.g. Hello Flutter!"
                                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-primary/50"
                                     value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -88,7 +138,7 @@ export default function SendNotificationPage() {
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold text-white/70">Message Body</label>
                                 <textarea
-                                    placeholder="Tell your users something exciting..."
+                                    placeholder="Type your message here..."
                                     rows={4}
                                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                                     value={formData.body}
@@ -121,8 +171,8 @@ export default function SendNotificationPage() {
                                     type="button"
                                     onClick={() => setFormData({ ...formData, targetType: 'all' })}
                                     className={`flex items-center justify-center gap-3 p-4 rounded-xl border transition-all ${formData.targetType === 'all'
-                                            ? 'bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10'
-                                            : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
+                                        ? 'bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10'
+                                        : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
                                         }`}
                                 >
                                     <Globe className="w-5 h-5" />
@@ -132,12 +182,12 @@ export default function SendNotificationPage() {
                                     type="button"
                                     onClick={() => setFormData({ ...formData, targetType: 'specific' })}
                                     className={`flex items-center justify-center gap-3 p-4 rounded-xl border transition-all ${formData.targetType === 'specific'
-                                            ? 'bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10'
-                                            : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
+                                        ? 'bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10'
+                                        : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
                                         }`}
                                 >
                                     <Smartphone className="w-5 h-5" />
-                                    <span className="font-semibold">Specific Token</span>
+                                    <span className="font-semibold">Specific Device</span>
                                 </button>
                             </div>
 
@@ -145,25 +195,35 @@ export default function SendNotificationPage() {
                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
                                     <input
                                         type="text"
-                                        placeholder="Enter device FCM token"
+                                        placeholder="Enter device ID (e.g. android-unique-id...)"
                                         className="w-full mt-2 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-primary/50"
                                         value={formData.token}
                                         onChange={(e) => setFormData({ ...formData, token: e.target.value })}
                                         required
                                     />
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                        Note: Enter the <b>Device ID</b>, not the Push Token, for this simulation backend.
+                                    </p>
                                 </motion.div>
                             )}
                         </div>
 
+                        {/* Status Message */}
+                        {msg && (
+                            <div className={`p-4 rounded-xl flex items-center gap-2 ${msg.type === 'success' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                                }`}>
+                                {msg.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                                {msg.text}
+                            </div>
+                        )}
+
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || apps.length === 0}
                             className="w-full py-4 bg-primary text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:opacity-90 transition-all shadow-xl shadow-primary/20 disabled:opacity-50"
                         >
                             {loading ? (
                                 <Loader2 className="w-6 h-6 animate-spin" />
-                            ) : success ? (
-                                <CheckCircle2 className="w-6 h-6 animate-bounce" />
                             ) : (
                                 <>
                                     <Send className="w-5 h-5" />
@@ -185,11 +245,11 @@ export default function SendNotificationPage() {
                                 title={formData.title}
                                 body={formData.body}
                                 imageUrl={formData.imageUrl}
-                                appName={formData.appName}
+                                appName={apps.find(a => a.id === formData.selectedAppId)?.app_name || "My App"}
                             />
                         </div>
                         <p className="text-center text-xs text-muted-foreground px-4">
-                            Real-time visualization of how your notification will appear on iOS/Android lock screens.
+                            Real-time visualization of how your notification will appear.
                         </p>
                     </div>
                 </div>
