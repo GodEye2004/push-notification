@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     try {
       console.log("Forwarding to index.js:", { title, body, imageUrl });
       const nodeRes = await fetch(
-        "http://192.168.100.102:5001/send-notification",
+        "http://localhost:5001/send-notification",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

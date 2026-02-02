@@ -86,7 +86,10 @@ void onStart(ServiceInstance service) async {
   });
 
   // Connect to our Node.js server
-  final String serverUrl = "http://192.168.100.102:5001";
+  // Use 10.0.2.2 for Android Emulator, localhost for iOS
+  final String serverUrl = Platform.isAndroid
+      ? "http://10.0.2.2:5001"
+      : "http://localhost:5001";
 
   IO.Socket socket = IO.io(
     serverUrl,
@@ -144,22 +147,36 @@ void onStart(ServiceInstance service) async {
     body ??= 'You have a new notification';
 
     try {
+      // Use BigTextStyle for nicer, expanded notifications
+      final BigTextStyleInformation bigTextStyleInformation =
+          BigTextStyleInformation(
+            body,
+            htmlFormatBigText: true,
+            contentTitle: title,
+            htmlFormatContentTitle: true,
+            summaryText: 'Shopping Demo',
+            htmlFormatSummaryText: true,
+          );
+
       localNotifications.show(
         id: DateTime.now().millisecond % 100000,
         title: title,
         body: body,
-        notificationDetails: const NotificationDetails(
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
-            'push_notifications_channel',
-            'Push Notifications',
-            channelDescription: 'Real-time notifications',
+            'push_notifications_channel_v3', // Changed ID to force update
+            'Shopping Notifications', // Changed Name
+            channelDescription: 'Notifications for new products',
             importance: Importance.max,
             priority: Priority.high,
             showWhen: true,
+            styleInformation: bigTextStyleInformation,
+            category: AndroidNotificationCategory.promo,
+            visibility: NotificationVisibility.public,
           ),
         ),
       );
-      print("Notification shown: $title - $body");
+      print("Notification shown [v3]: $title - $body");
     } catch (e) {
       print("Error showing notification: $e");
     }
@@ -195,164 +212,167 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'No-Firebase Push',
+      title: 'Shopping Demo',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const MyHomePage(),
+      home: const ShoppingHomePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+class ShoppingHomePage extends StatefulWidget {
+  const ShoppingHomePage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<ShoppingHomePage> createState() => _ShoppingHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  String _status = "Idle";
-  final TextEditingController _appIdController = TextEditingController();
-  final String serverUrl = "http://10.0.2.2:5001"; // Android Emulator
+class _ShoppingHomePageState extends State<ShoppingHomePage> {
+  // Hardcoded Credentials
+  final String _appId = "72709c30-fd4c-4ede-a5f8-02d713b67de6";
+  final String _serverUrl =
+      "http://10.0.2.2:5001"; // Use 10.0.2.2 for Android Emulator, localhost for iOS
 
+  String _status = "Initializing...";
   String? _socketId;
+  bool _registered = false;
 
   @override
   void initState() {
     super.initState();
-    _requestPermission();
+    _setupConnection();
+  }
 
+  void _setupConnection() {
     // Listen for socket ID from background service
     FlutterBackgroundService().on('socket_id').listen((event) {
       if (event != null && event['id'] != null) {
         setState(() {
           _socketId = event['id'];
-          _status = "Service Connected. Ready to Register.";
+          _status = "Connected. Registering...";
         });
+        _registerDevice();
       }
     });
 
-    // Ask for it immediately
+    // Request socket ID incase it's already connected
     FlutterBackgroundService().invoke("get_socket_id");
   }
 
-  Future<void> _requestPermission() async {
-    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    if (Platform.isAndroid) {
-      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          flutterLocalNotificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin
-              >();
-      await androidImplementation?.requestNotificationsPermission();
-    }
-  }
-
   Future<void> _registerDevice() async {
-    final appId = _appIdController.text.trim();
-    if (appId.isEmpty) {
-      setState(() => _status = "Please enter App ID");
-      return;
-    }
-
-    setState(() => _status = "Registering...");
+    if (_registered) return;
 
     try {
-      // Use real socket ID if available, otherwise fallback (which will likely fail for targeting)
-      String pushToken = _socketId ?? "waiting-for-socket-id";
-
-      if (_socketId == null) {
-        // Try to get it one last time?
-        // For now just warn user in status, but proceed to try
-        setState(() => _status = "Warning: No Socket ID yet...");
-      }
-
       final body = {
-        "app_id": appId,
-        "device_id": "flutter_device_${DateTime.now().millisecondsSinceEpoch}",
-        "platform": "android",
-        "os_version": "14.0",
+        "app_id": _appId,
+        "device_id":
+            "phone_${DateTime.now().millisecondsSinceEpoch}", // Unique ID simulation
+        "platform": Platform.isAndroid ? "android" : "ios",
+        "os_version": "1.0",
         "app_version": "1.0.0",
-        "device_model": "Emulator",
-        "push_token": pushToken,
+        "device_model": "Flutter Demo",
+        "push_token": _socketId, // Using socket ID as token for this demo
       };
 
       final response = await http.post(
-        Uri.parse('$serverUrl/register-device'),
+        Uri.parse('$_serverUrl/register-device'),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body), // Requires import 'dart:convert';
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() => _status = "Registered! ID: ${data['device_id']}");
+        setState(() {
+          _registered = true;
+          _status = "Ready for Deals!";
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Device Registered for Push Notification!'),
+          ),
+        );
       } else {
-        setState(() => _status = "Error: ${response.statusCode}");
+        setState(() => _status = "Registration Failed: ${response.statusCode}");
       }
     } catch (e) {
       setState(() => _status = "Connection Error: $e");
     }
   }
 
-  Future<void> _triggerNotification() async {
-    // Keeping this for manual testing if needed, but primary flow is now Registration -> Wait for Push
-    setState(() => _status = "Sending Broadcast Trigger...");
-    try {
-      final response = await http
-          .post(
-            Uri.parse('$serverUrl/send-notification'),
-          ) // This endpoint needs specific args now, might fail if called without valid body
-          .timeout(const Duration(seconds: 5));
-      // ... handling ...
-    } catch (e) {}
+  void _addToCart(String productName) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$productName added to cart!'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Push Client')),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Icon(
-              Icons.phonelink_setup,
-              size: 60,
-              color: Colors.deepPurple,
-            ),
-            const SizedBox(height: 30),
-            TextField(
-              controller: _appIdController,
-              decoration: const InputDecoration(
-                labelText: "Enter App ID from Panel",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.apps),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _registerDevice,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text('Register Device'),
-            ),
-            const SizedBox(height: 30),
-            Text(
-              'Status: $_status',
+      appBar: AppBar(
+        title: const Text('Shopping Demo'),
+        backgroundColor: Colors.blueAccent,
+        foregroundColor: Colors.white,
+      ),
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            color: Colors.grey[200],
+            width: double.infinity,
+            child: Text(
+              _status,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 12, color: Colors.grey[800]),
             ),
-            const Spacer(),
-            const Text(
-              'Keep the app open or in background to receive notifications via Socket.io bridge.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildProductCard(
+                  "Wireless Headphones",
+                  "High quality sound",
+                  Icons.headphones,
+                ),
+                _buildProductCard(
+                  "Smart Watch",
+                  "Track your fitness",
+                  Icons.watch,
+                ),
+                _buildProductCard(
+                  "Running Shoes",
+                  "Comfortable for miles",
+                  Icons.directions_run,
+                ),
+                _buildProductCard(
+                  "Backpack",
+                  "Carry everything",
+                  Icons.backpack,
+                ),
+              ],
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductCard(String name, String desc, IconData icon) {
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: ListTile(
+        leading: Icon(icon, size: 40, color: Colors.blue),
+        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(desc),
+        trailing: IconButton(
+          icon: const Icon(Icons.add_shopping_cart, color: Colors.green),
+          onPressed: () => _addToCart(name),
         ),
       ),
     );
