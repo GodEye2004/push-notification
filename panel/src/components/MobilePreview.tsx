@@ -24,7 +24,7 @@ export function MobilePreview({ title, body, imageUrl, appName = "Push Panel" }:
                     {time}
                 </div>
                 <div className="text-white/80 text-xs text-center drop-shadow-md">
-                    Saturday, January 31
+                    شنبه، ۱۲ بهمن
                 </div>
 
                 {/* Notification Card */}
@@ -35,6 +35,7 @@ export function MobilePreview({ title, body, imageUrl, appName = "Push Panel" }:
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             className="mt-12 glass backdrop-blur-3xl rounded-2xl p-3 shadow-xl border border-white/20"
+                            dir="ltr"
                         >
                             <div className="flex items-start gap-2">
                                 <div className="w-5 h-5 bg-primary rounded flex items-center justify-center">
@@ -43,10 +44,10 @@ export function MobilePreview({ title, body, imageUrl, appName = "Push Panel" }:
                                 <div className="flex-1">
                                     <div className="flex justify-between items-center mb-0.5">
                                         <span className="text-[10px] uppercase font-bold text-white/50 tracking-wider font-sans">{appName}</span>
-                                        <span className="text-[10px] text-white/40">now</span>
+                                        <span className="text-[10px] text-white/40">الان</span>
                                     </div>
-                                    <h4 className="text-sm font-bold text-white leading-tight">{title || "Notification Title"}</h4>
-                                    <p className="text-xs text-white/70 line-clamp-2 mt-0.5 leading-snug">{body || "Notification message will appear here..."}</p>
+                                    <h4 className="text-sm font-bold text-white leading-tight text-right">{title || "عنوان اعلان"}</h4>
+                                    <p className="text-xs text-white/70 line-clamp-2 mt-0.5 leading-snug text-right">{body || "پیام اعلان در اینجا نمایش داده می‌شود..."}</p>
 
                                     {imageUrl && (
                                         <div className="mt-2 rounded-lg overflow-hidden border border-white/10 h-24">

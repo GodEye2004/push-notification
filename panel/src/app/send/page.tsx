@@ -46,7 +46,7 @@ export default function SendNotificationPage() {
 
         const selectedApp = apps.find(a => a.id === formData.selectedAppId);
         if (!selectedApp) {
-            setMsg({ type: 'error', text: "Please select a valid app." });
+            setMsg({ type: 'error', text: "لطفا یک برنامه معتبر انتخاب کنید." });
             setLoading(false);
             return;
         }
@@ -73,14 +73,14 @@ export default function SendNotificationPage() {
             const data = await res.json();
 
             if (data.status === 'sent') {
-                setMsg({ type: 'success', text: `Sent to ${data.sent_to.length} device(s)!` });
+                setMsg({ type: 'success', text: `به ${data.sent_to.length} دستگاه ارسال شد!` });
                 // Optional: Clear form
             } else {
-                setMsg({ type: 'error', text: data.error || "Failed to send." });
+                setMsg({ type: 'error', text: data.error || "ارسال با خطا مواجه شد." });
             }
         } catch (err) {
             console.error(err);
-            setMsg({ type: 'error', text: "Connection error." });
+            setMsg({ type: 'error', text: "خطای اتصال." });
         } finally {
             setLoading(false);
         }
@@ -89,8 +89,8 @@ export default function SendNotificationPage() {
     return (
         <div className="space-y-8 pb-20">
             <div>
-                <h1 className="text-3xl font-bold text-white mb-2">Send Push Notification</h1>
-                <p className="text-muted-foreground">Broadcast notifications to your users via the active backend.</p>
+                <h1 className="text-3xl font-bold text-white mb-2">ارسال اعلان پوش</h1>
+                <p className="text-muted-foreground">ارسال همگانی اعلان‌ها به کاربران از طریق سرور فعال.</p>
             </div>
 
             <div className="flex flex-col xl:flex-row gap-12">
@@ -100,11 +100,11 @@ export default function SendNotificationPage() {
                         {/* App Selection */}
                         <div className="space-y-4">
                             <label className="text-sm font-semibold text-white/70 flex items-center gap-2">
-                                <Bell className="w-4 h-4" /> Destination Application
+                                <Bell className="w-4 h-4" /> برنامه مقصد
                             </label>
                             {apps.length === 0 ? (
                                 <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-sm">
-                                    No apps registered. Go to "Apps" page to create one.
+                                    برنامه‌ای ثبت نشده است. برای ایجاد به صفحه "برنامه‌ها" بروید.
                                 </div>
                             ) : (
                                 <select
@@ -114,7 +114,7 @@ export default function SendNotificationPage() {
                                 >
                                     {apps.map(app => (
                                         <option key={app.id} value={app.id} className="text-black">
-                                            {app.app_name} ({app.device_count || 0} devices)
+                                            {app.app_name} ({app.device_count || 0} دستگاه)
                                         </option>
                                     ))}
                                 </select>
@@ -124,10 +124,10 @@ export default function SendNotificationPage() {
                         {/* Content Section */}
                         <div className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-white/70">Notification Title</label>
+                                <label className="text-sm font-semibold text-white/70">عنوان اعلان</label>
                                 <input
                                     type="text"
-                                    placeholder="e.g. Hello Flutter!"
+                                    placeholder="مثال: سلام فلاتر!"
                                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-primary/50"
                                     value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -136,9 +136,9 @@ export default function SendNotificationPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-white/70">Message Body</label>
+                                <label className="text-sm font-semibold text-white/70">متن پیام</label>
                                 <textarea
-                                    placeholder="Type your message here..."
+                                    placeholder="پیام خود را اینجا بنویسید..."
                                     rows={4}
                                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                                     value={formData.body}
@@ -149,7 +149,7 @@ export default function SendNotificationPage() {
 
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold text-white/70 flex items-center gap-2">
-                                    <ImageIcon className="w-4 h-4" /> Image URL (Optional)
+                                    <ImageIcon className="w-4 h-4" /> آدرس تصویر (اختیاری)
                                 </label>
                                 <input
                                     type="url"
@@ -164,7 +164,7 @@ export default function SendNotificationPage() {
                         {/* Targeting Section */}
                         <div className="space-y-4 pt-6 border-t border-white/5">
                             <label className="text-sm font-semibold text-white/70 flex items-center gap-2">
-                                <Target className="w-4 h-4" /> Audience Targeting
+                                <Target className="w-4 h-4" /> هدف‌گذاری مخاطبان
                             </label>
                             <div className="grid grid-cols-2 gap-4">
                                 <button
@@ -176,7 +176,7 @@ export default function SendNotificationPage() {
                                         }`}
                                 >
                                     <Globe className="w-5 h-5" />
-                                    <span className="font-semibold">All Devices</span>
+                                    <span className="font-semibold">همه دستگاه‌ها</span>
                                 </button>
                                 <button
                                     type="button"
@@ -187,7 +187,7 @@ export default function SendNotificationPage() {
                                         }`}
                                 >
                                     <Smartphone className="w-5 h-5" />
-                                    <span className="font-semibold">Specific Device</span>
+                                    <span className="font-semibold">دستگاه خاص</span>
                                 </button>
                             </div>
 
@@ -195,14 +195,14 @@ export default function SendNotificationPage() {
                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
                                     <input
                                         type="text"
-                                        placeholder="Enter device ID (e.g. android-unique-id...)"
+                                        placeholder="شناسه دستگاه را وارد کنید (e.g. android-unique-id...)"
                                         className="w-full mt-2 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-primary/50"
                                         value={formData.token}
                                         onChange={(e) => setFormData({ ...formData, token: e.target.value })}
                                         required
                                     />
                                     <p className="text-xs text-muted-foreground mt-2">
-                                        Note: Enter the <b>Device ID</b>, not the Push Token, for this simulation backend.
+                                        نکته: برای این شبیه‌ساز، شناسه دستگاه را وارد کنید نه توکن پوش.
                                     </p>
                                 </motion.div>
                             )}
@@ -227,7 +227,7 @@ export default function SendNotificationPage() {
                             ) : (
                                 <>
                                     <Send className="w-5 h-5" />
-                                    Broadcast Notification
+                                    ارسال اعلان همگانی
                                 </>
                             )}
                         </button>
@@ -238,18 +238,18 @@ export default function SendNotificationPage() {
                 <div className="hidden xl:block w-[320px]">
                     <div className="sticky top-8 space-y-6">
                         <h3 className="text-lg font-bold text-white flex items-center gap-2 px-2">
-                            <Smartphone className="w-5 h-5" /> Device Preview
+                            <Smartphone className="w-5 h-5" /> پیش‌نمایش دستگاه
                         </h3>
                         <div className="flex justify-center">
                             <MobilePreview
                                 title={formData.title}
                                 body={formData.body}
                                 imageUrl={formData.imageUrl}
-                                appName={apps.find(a => a.id === formData.selectedAppId)?.app_name || "My App"}
+                                appName={apps.find(a => a.id === formData.selectedAppId)?.app_name || "برنامه من"}
                             />
                         </div>
                         <p className="text-center text-xs text-muted-foreground px-4">
-                            Real-time visualization of how your notification will appear.
+                            نمایش لحظه‌ای نحوه نمایش اعلان شما.
                         </p>
                     </div>
                 </div>

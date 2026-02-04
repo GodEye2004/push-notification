@@ -14,9 +14,9 @@ export default function DocsPage() {
     };
 
     const tabs = [
-        { id: "api", name: "REST API Workflow", icon: Server },
-        { id: "flutter", name: "Flutter Integration", icon: Smartphone },
-        { id: "android", name: "Android Native", icon: Terminal },
+        { id: "api", name: "گردش کار REST API", icon: Server },
+        { id: "flutter", name: "ادغام در فلاتر", icon: Smartphone },
+        { id: "android", name: "اندروید نیتیو", icon: Terminal },
     ];
 
     const snippets = {
@@ -98,8 +98,8 @@ client.newCall(request).execute()`
     return (
         <div className="space-y-8 pb-20">
             <div>
-                <h1 className="text-3xl font-bold text-white mb-2">Documentation</h1>
-                <p className="text-muted-foreground">Master the 3-step process: Register App &rarr; Register Device &rarr; Send Notification.</p>
+                <h1 className="text-3xl font-bold text-white mb-2">مستندات</h1>
+                <p className="text-muted-foreground">تسلط بر فرآیند ۳ مرحله‌ای: ثبت برنامه &larr; ثبت دستگاه &larr; ارسال اعلان.</p>
             </div>
 
             <div className="flex flex-wrap gap-4 p-1 bg-white/5 rounded-2xl w-fit">
@@ -122,7 +122,7 @@ client.newCall(request).execute()`
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                 <Code className="w-5 h-5 text-primary" />
-                                {activeTab === 'api' ? 'API Workflows' : 'Client Integration'}
+                                {activeTab === 'api' ? 'جریان‌های کاری API' : 'ادغام سمت کلاینت'}
                             </h3>
                             <button
                                 onClick={() => copyToClipboard(snippets[activeTab as keyof typeof snippets], 'snippet')}
@@ -131,7 +131,7 @@ client.newCall(request).execute()`
                                 {copied === 'snippet' ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
                             </button>
                         </div>
-                        <pre className="bg-[#0a0a0a] p-6 rounded-2xl text-xs sm:text-sm text-blue-400 overflow-x-auto border border-white/5 font-mono leading-relaxed">
+                        <pre className="bg-[#0a0a0a] p-6 rounded-2xl text-xs sm:text-sm text-blue-400 overflow-x-auto border border-white/5 font-mono leading-relaxed" dir="ltr">
                             {snippets[activeTab as keyof typeof snippets]}
                         </pre>
                     </div>
@@ -140,23 +140,23 @@ client.newCall(request).execute()`
                 <div className="space-y-6">
                     <div className="glass-card p-6 rounded-2xl bg-primary/5 border-primary/20">
                         <h4 className="font-bold text-white mb-2 flex items-center gap-2">
-                            <Key className="w-4 h-4" /> Authentication
+                            <Key className="w-4 h-4" /> احراز هویت
                         </h4>
                         <p className="text-sm text-muted-foreground leading-relaxed">
-                            Sending notifications requires both the <code>app_id</code> and <code>api_key</code>. Keep your API Key secret!
+                            ارسال اعلان‌ها مستلزم داشتن هر دو مورد <code>app_id</code> و <code>api_key</code> است. کلید API خود را مخفی نگه دارید!
                         </p>
                     </div>
 
                     <div className="glass-card p-6 rounded-2xl space-y-4">
-                        <h4 className="font-bold text-white">Steps Overview</h4>
-                        <div className="space-y-4 relative before:absolute before:left-2.5 before:top-2 before:h-[80%] before:w-0.5 before:bg-white/10">
+                        <h4 className="font-bold text-white">نمای کلی مراحل</h4>
+                        <div className="space-y-4 relative before:absolute before:right-2.5 before:top-2 before:h-[80%] before:w-0.5 before:bg-white/10">
                             {[
-                                { title: "Register App", desc: "Create an app in the Panel to get Keys." },
-                                { title: "Register Device", desc: "Mobile app sends device info + push token to backend." },
-                                { title: "Send Push", desc: "Call /send-notification with target audience." }
+                                { title: "ثبت برنامه", desc: "یک برنامه در پنل ایجاد کنید تا کلیدها را دریافت کنید." },
+                                { title: "ثبت دستگاه", desc: "برنامه موبایل اطلاعات دستگاه + توکن پوش را به بک‌انند ارسال می‌کند." },
+                                { title: "ارسال اعلان", desc: "فراخوانی /send-notification برای مخاطبان هدف." }
                             ].map((step, i) => (
-                                <div key={i} className="relative z-10 pl-8">
-                                    <div className="absolute left-0 top-1 w-5 h-5 rounded-full bg-black border border-primary text-primary flex items-center justify-center text-[10px] font-bold">
+                                <div key={i} className="relative z-10 pr-8">
+                                    <div className="absolute right-0 top-1 w-5 h-5 rounded-full bg-black border border-primary text-primary flex items-center justify-center text-[10px] font-bold">
                                         {i + 1}
                                     </div>
                                     <h5 className="text-sm font-bold text-white">{step.title}</h5>

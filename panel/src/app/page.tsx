@@ -6,10 +6,10 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
   const [stats, setStats] = useState([
-    { name: "Total Apps", value: "3", icon: AppWindow, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { name: "Active Sockets", value: "0", icon: Smartphone, color: "text-green-500", bg: "bg-green-500/10" },
-    { name: "Sent (History)", value: "0", icon: Send, color: "text-purple-500", bg: "bg-purple-500/10" },
-    { name: "Server Status", value: "Offline", icon: Activity, color: "text-orange-500", bg: "bg-orange-500/10" },
+    { name: "تعداد برنامه‌ها", value: "3", icon: AppWindow, color: "text-blue-500", bg: "bg-blue-500/10" },
+    { name: "سوکت‌های فعال", value: "0", icon: Smartphone, color: "text-green-500", bg: "bg-green-500/10" },
+    { name: "ارسال شده (تاریخچه)", value: "0", icon: Send, color: "text-purple-500", bg: "bg-purple-500/10" },
+    { name: "وضعیت سرور", value: "آفلاین", icon: Activity, color: "text-orange-500", bg: "bg-orange-500/10" },
   ]);
   const [history, setHistory] = useState<any[]>([]);
 
@@ -18,10 +18,10 @@ export default function Home() {
       const res = await fetch('http://localhost:5001/api/status');
       const data = await res.json();
       setStats([
-        { name: "Total Apps", value: "3", icon: AppWindow, color: "text-blue-500", bg: "bg-blue-500/10" },
-        { name: "Active Sockets", value: data.clients.length.toString(), icon: Smartphone, color: "text-green-500", bg: "bg-green-500/10" },
-        { name: "Sent (History)", value: data.history.length.toString(), icon: Send, color: "text-purple-500", bg: "bg-purple-500/10" },
-        { name: "Server Status", value: "Online", icon: Activity, color: "text-green-500", bg: "bg-green-500/20" },
+        { name: "تعداد برنامه‌ها", value: "3", icon: AppWindow, color: "text-blue-500", bg: "bg-blue-500/10" },
+        { name: "سوکت‌های فعال", value: data.clients.length.toString(), icon: Smartphone, color: "text-green-500", bg: "bg-green-500/10" },
+        { name: "ارسال شده (تاریخچه)", value: data.history.length.toString(), icon: Send, color: "text-purple-500", bg: "bg-purple-500/10" },
+        { name: "وضعیت سرور", value: "آنلاین", icon: Activity, color: "text-green-500", bg: "bg-green-500/20" },
       ]);
       setHistory(data.history);
     } catch (err) {
@@ -38,8 +38,8 @@ export default function Home() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Dashboard Overview</h1>
-        <p className="text-muted-foreground">Welcome back, here's what's happening with your notifications.</p>
+        <h1 className="text-3xl font-bold text-white mb-2">نمای کلی پیشخوان</h1>
+        <p className="text-muted-foreground">خوش آمدید، در اینجا وضعیت اعلان‌های شما نمایش داده می‌شود.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -65,16 +65,16 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="glass-card p-8 rounded-2xl space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">Recent Activities</h2>
-            <button className="text-sm text-primary hover:underline">View All</button>
+            <h2 className="text-xl font-bold text-white">فعالیت‌های اخیر</h2>
+            <button className="text-sm text-primary hover:underline">مشاهده همه</button>
           </div>
           <div className="space-y-4">
             {[1, 2, 3].map((item) => (
               <div key={item} className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/5">
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-white">Broadcast sent to "App Store Pro"</p>
-                  <p className="text-xs text-muted-foreground">3,200 devices targeted • 2 minutes ago</p>
+                  <p className="text-sm font-medium text-white">پخش همگانی برای "App Store Pro"</p>
+                  <p className="text-xs text-muted-foreground">۳۲۰۰ دستگاه • ۲ دقیقه پیش</p>
                 </div>
               </div>
             ))}
@@ -85,15 +85,15 @@ export default function Home() {
           <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mb-2">
             <Send className="w-8 h-8 text-primary" />
           </div>
-          <h2 className="text-xl font-bold text-white">Ready to reach your users?</h2>
+          <h2 className="text-xl font-bold text-white">آماده ارسال اعلان هستید؟</h2>
           <p className="text-muted-foreground max-w-xs mx-auto text-sm">
-            Easily send targeted push notifications to any of your registered applications.
+            به سادگی اعلان‌های هدفمند را به هر یک از برنامه‌های ثبت شده خود ارسال کنید.
           </p>
           <a
             href="/send"
             className="px-6 py-2.5 bg-primary text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-lg shadow-primary/20"
           >
-            Create Notification
+            ایجاد اعلان
           </a>
         </div>
       </div>

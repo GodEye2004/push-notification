@@ -73,10 +73,10 @@ export default function AppsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">
-            Registered Applications
+            برنامه‌های ثبت شده
           </h1>
           <p className="text-muted-foreground">
-            Manage your connected apps and their FCM configurations.
+            برنامه‌های متصل و تنظیمات FCM خود را مدیریت کنید.
           </p>
         </div>
         <button
@@ -84,14 +84,14 @@ export default function AppsPage() {
           className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-lg shadow-primary/20"
         >
           <Plus className="w-5 h-5" />
-          Add New App
+          افزودن برنامه جدید
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {apps.length === 0 && (
           <div className="col-span-full py-12 text-center text-muted-foreground">
-            No apps registered yet. Click "Add New App" to get started.
+            هنوز برنامه‌ای ثبت نشده است. برای شروع روی "افزودن برنامه جدید" کلیک کنید.
           </div>
         )}
         {apps.map((app, i) => (
@@ -121,7 +121,7 @@ export default function AppsPage() {
 
               <div className="space-y-2 pt-4 border-t border-white/5">
                 <div>
-                  <p className="text-[10px] uppercase font-bold text-white/30 tracking-widest mb-1">App ID</p>
+                  <p className="text-[10px] uppercase font-bold text-white/30 tracking-widest mb-1">شناسه برنامه</p>
                   <code className="text-xs bg-black/30 p-1 rounded text-white/70 block truncate">{app.id}</code>
                 </div>
               </div>
@@ -132,7 +132,7 @@ export default function AppsPage() {
                   className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-white/80 hover:bg-white/10 transition-all"
                 >
                   <Shield className="w-3.5 h-3.5" />
-                  {copiedKey === `apikey-${app.id}` ? "Copied API Key" : "Copy API Key"}
+                  {copiedKey === `apikey-${app.id}` ? "کپی شد" : "کپی کلید API"}
                 </button>
               </div>
             </div>
@@ -152,7 +152,7 @@ export default function AppsPage() {
             >
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-white">
-                  {justRegistered ? "App Registered!" : "New Application"}
+                  {justRegistered ? "برنامه ثبت شد!" : "برنامه جدید"}
                 </h2>
                 <button
                   onClick={closeModal}
@@ -166,12 +166,12 @@ export default function AppsPage() {
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-white/70 mb-1">
-                      App Name
+                      نام برنامه
                     </label>
                     <input
                       type="text"
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-colors"
-                      placeholder="e.g. My Awesome App"
+                      placeholder="مثال: برنامه من"
                       value={formData.app_name}
                       onChange={(e) =>
                         setFormData({ ...formData, app_name: e.target.value })
@@ -181,12 +181,12 @@ export default function AppsPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-white/70 mb-1">
-                      Package Name
+                      نام پکیج
                     </label>
                     <input
                       type="text"
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 transition-colors"
-                      placeholder="e.g. com.example.app"
+                      placeholder="مثال: com.example.app"
                       value={formData.package_name}
                       onChange={(e) =>
                         setFormData({
@@ -202,7 +202,7 @@ export default function AppsPage() {
                       type="submit"
                       className="w-full py-3 bg-primary text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-lg shadow-primary/20"
                     >
-                      Register App
+                      ثبت برنامه
                     </button>
                   </div>
                 </form>
@@ -211,14 +211,14 @@ export default function AppsPage() {
                   <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
                     <p className="text-green-400 text-sm flex items-center gap-2">
                       <Check className="w-4 h-4" />
-                      Application successfully registered!
+                      برنامه با موفقیت ثبت شد!
                     </p>
                   </div>
 
                   <div className="space-y-4">
                     <div>
                       <label className="text-xs uppercase font-bold text-white/30 tracking-widest">
-                        App ID
+                        شناسه برنامه
                       </label>
                       <div className="flex gap-2 mt-1">
                         <code className="flex-1 bg-black/30 p-3 rounded-lg text-white font-mono text-sm break-all">
@@ -235,7 +235,7 @@ export default function AppsPage() {
 
                     <div>
                       <label className="text-xs uppercase font-bold text-white/30 tracking-widest">
-                        API Key
+                        کلید API
                       </label>
                       <div className="flex gap-2 mt-1">
                         <code className="flex-1 bg-black/30 p-3 rounded-lg text-white font-mono text-sm break-all">
@@ -251,9 +251,9 @@ export default function AppsPage() {
                     </div>
 
                     <div className="pt-4 border-t border-white/10">
-                      <h4 className="text-white font-semibold mb-2">Integration Code</h4>
+                      <h4 className="text-white font-semibold mb-2">کد ادغام</h4>
                       <p className="text-sm text-muted-foreground mb-2">
-                        Copy this into your app to register the device:
+                        این کد را در برنامه خود کپی کنید تا دستگاه ثبت شود:
                       </p>
 
                       <IntegrationTabs appId={justRegistered.app_id} />
@@ -265,7 +265,7 @@ export default function AppsPage() {
                       onClick={closeModal}
                       className="w-full py-3 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-all"
                     >
-                      Done
+                      انجام شد
                     </button>
                   </div>
                 </div>
@@ -319,23 +319,23 @@ client.newCall(request).execute()`;
         <button
           onClick={() => setActiveTab("flutter")}
           className={`px-4 py-2 text-xs font-bold transition-colors ${activeTab === "flutter"
-              ? "text-primary border-b-2 border-primary bg-white/5"
-              : "text-muted-foreground hover:text-white"
+            ? "text-primary border-b-2 border-primary bg-white/5"
+            : "text-muted-foreground hover:text-white"
             }`}
         >
-          Flutter
+          فلاتر
         </button>
         <button
           onClick={() => setActiveTab("android")}
           className={`px-4 py-2 text-xs font-bold transition-colors ${activeTab === "android"
-              ? "text-primary border-b-2 border-primary bg-white/5"
-              : "text-muted-foreground hover:text-white"
+            ? "text-primary border-b-2 border-primary bg-white/5"
+            : "text-muted-foreground hover:text-white"
             }`}
         >
-          Android Native
+          اندروید نیتیو
         </button>
       </div >
-      <div className="p-3 text-xs text-white/70 font-mono overflow-auto max-h-48 whitespace-pre">
+      <div className="p-3 text-xs text-white/70 font-mono overflow-auto max-h-48 whitespace-pre" dir="ltr">
         {activeTab === "flutter" ? flutterCode : androidCode}
       </div>
     </div >

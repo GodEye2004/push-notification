@@ -5,24 +5,24 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const items = [
-    { name: "Overview", href: "/", icon: LayoutDashboard },
-    { name: "Applications", href: "/apps", icon: AppWindow },
-    { name: "Send Notification", href: "/send", icon: Send },
-    { name: "History", href: "/history", icon: Bell },
-    { name: "Documentation", href: "/docs", icon: Settings }, // Reusing settings icon or could use HelpCircle
-    { name: "Settings", href: "/settings", icon: Settings },
+    { name: "پیشخوان", href: "/", icon: LayoutDashboard },
+    { name: "برنامه‌ها", href: "/apps", icon: AppWindow },
+    { name: "ارسال اعلان", href: "/send", icon: Send },
+    { name: "تاریخچه", href: "/history", icon: Bell },
+    { name: "مستندات", href: "/docs", icon: Settings }, // Reusing settings icon or could use HelpCircle
+    { name: "تنظیمات", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar() {
     const pathname = usePathname();
 
     return (
-        <div className="w-64 h-screen glass border-r border-white/5 flex flex-col p-6 fixed transition-all">
+        <div className="w-64 h-screen glass border-l border-white/5 flex flex-col p-6 fixed right-0 top-0 transition-all z-50">
             <div className="flex items-center gap-3 mb-12">
                 <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
                     <Bell className="text-white w-6 h-6" />
                 </div>
-                <span className="text-xl font-bold tracking-tight text-white">Push Panel</span>
+                <span className="text-xl font-bold tracking-tight text-white">پنل اعلان</span>
             </div>
 
             <nav className="flex-1 space-y-2">
@@ -50,7 +50,7 @@ export function Sidebar() {
                 <div className="flex items-center gap-3 px-2">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-purple-500" />
                     <div className="overflow-hidden">
-                        <p className="text-sm font-semibold text-white truncate">Admin Account</p>
+                        <p className="text-sm font-semibold text-white truncate">حساب مدیریت</p>
                         <p className="text-xs text-muted-foreground truncate">admin@example.com</p>
                     </div>
                 </div>
