@@ -1,0 +1,9 @@
+name: fcm_push_workspace
+description: Push notification system monorepo workspace
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dev_dependencies:
+  melos: ^7.0.0

@@ -1,0 +1,88 @@
+name: fcm-push
+repository: https://github.com/GodEye2004/push-notification
+
+packages:
+  - packages/**
+
+scripts:
+  # Bootstrap all packages
+  bootstrap:
+    run: |
+      melos exec -- "echo Bootstrapping \$MELOS_PACKAGE_NAME..."
+    description: Install dependencies for all packages
+
+  # Clean all packages
+  clean:
+    run: |
+      melos exec -- "echo Cleaning \$MELOS_PACKAGE_NAME..."
+    description: Clean build artifacts from all packages
+  
+  # Server commands
+  server:dev:
+    run: npm run dev
+    packageFilters:
+      dirExists: src
+      fileExists: package.json
+      scope: '@fcm-push/server'
+    description: Start the server in development mode
+
+  server:start:
+    run: npm start
+    packageFilters:
+      scope: '@fcm-push/server'
+    description: Start the server in production mode
+
+  # Admin panel commands
+  panel:dev:
+    run: npm run dev
+    packageFilters:
+      scope: '@fcm-push/admin-panel'
+    description: Start the admin panel in development mode
+
+  panel:build:
+    run: npm run build
+    packageFilters:
+      scope: '@fcm-push/admin-panel'
+    description: Build the admin panel for production
+
+  panel:start:
+    run: npm start
+    packageFilters:
+      scope: '@fcm-push/admin-panel'
+    description: Start the admin panel in production mode
+
+  # Mobile app commands
+  mobile:get:
+    run: flutter pub get
+    packageFilters:
+      dirExists: lib
+      fileExists: pubspec.yaml
+    description: Get Flutter dependencies for mobile app
+
+  mobile:run:
+    run: flutter run
+    packageFilters:
+      dirExists: lib
+      fileExists: pubspec.yaml
+    description: Run the Flutter mobile app
+
+  mobile:build:
+    run: flutter build apk --release
+    packageFilters:
+      dirExists: lib
+      fileExists: pubspec.yaml
+    description: Build release APK for mobile app
+
+command:
+  bootstrap:
+    environment:
+      sdk: ">=3.0.0 <4.0.0"
+    runPubGetInParallel: false
+
+  clean:
+    hooks:
+      post: |
+        echo "Clean complete!"
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"

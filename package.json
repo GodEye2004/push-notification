@@ -1,23 +1,21 @@
 {
-  "name": "fcm-push",
+  "name": "fcm-push-monorepo",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Push notification system with server, admin panel, and mobile app",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "melos": "melos",
+    "bootstrap": "melos bootstrap",
+    "clean": "melos clean",
+    "server:dev": "cd packages/server && npm run dev",
+    "panel:dev": "cd packages/admin-panel && npm run dev",
+    "mobile:run": "cd packages/mobile-app && flutter run"
   },
-  "keywords": [],
+  "keywords": [
+    "monorepo",
+    "push-notifications",
+    "melos"
+  ],
   "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "axios": "^1.13.4",
-    "body-parser": "^2.2.2",
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "google-auth-library": "^10.5.0",
-    "mongoose": "^9.1.5",
-    "socket.io": "^4.8.3",
-    "web-push": "^3.6.7"
-  }
+  "license": "ISC"
 }

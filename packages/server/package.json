@@ -1,0 +1,29 @@
+{
+    "name": "@fcm-push/server",
+    "version": "1.0.0",
+    "description": "Push notification server with Socket.IO",
+    "main": "src/server.js",
+    "scripts": {
+        "dev": "node src/server.js",
+        "start": "node src/server.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "push",
+        "notifications",
+        "socket.io"
+    ],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs",
+    "dependencies": {
+        "axios": "^1.13.4",
+        "body-parser": "^2.2.2",
+        "cors": "^2.8.6",
+        "express": "^5.2.1",
+        "google-auth-library": "^10.5.0",
+        "mongoose": "^9.1.5",
+        "socket.io": "^4.8.3",
+        "web-push": "^3.6.7"
+    }
+}

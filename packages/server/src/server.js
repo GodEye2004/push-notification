@@ -16,7 +16,9 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public")));
+// Note: Adjust public path if needed in the future
+// app.use(express.static(path.join(__dirname, "../../public")));
+
 
 // Web Push setup (keeping it for the demo page)
 const publicVapidKey =
