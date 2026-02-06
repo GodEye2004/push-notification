@@ -3,6 +3,7 @@
 import localFont from "next/font/local";
 import { Sidebar } from "@/components/Sidebar";
 import "./globals.css";
+import { usePathname } from "next/navigation";
 
 const vazirmatn = localFont({
   src: [
@@ -30,12 +31,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isIntroPage = pathname === "/intro";
+
   return (
     <html lang="fa" dir="rtl">
       <body className={`${vazirmatn.variable} font-sans antialiased`}>
         <div className="flex bg-[#030303] min-h-screen">
-          <Sidebar />
-          <main className="flex-1 mr-64 p-8 overflow-y-auto min-h-screen">
+          {!isIntroPage && <Sidebar />}
+          <main className={`flex-1 ${!isIntroPage ? "mr-64" : ""} p-8 overflow-y-auto min-h-screen`}>
             <div className="max-w-6xl mx-auto animate-in">
               {children}
             </div>

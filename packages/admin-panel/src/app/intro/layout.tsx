@@ -1,27 +1,4 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
-import "../globals.css";
-
-const vazirmatn = localFont({
-    src: [
-        {
-            path: "../../../fonts/Vazirmatn-Regular.woff2",
-            weight: "400",
-            style: "normal",
-        },
-        {
-            path: "../../../fonts/Vazirmatn-Medium.woff2",
-            weight: "500",
-            style: "normal",
-        },
-        {
-            path: "../../../fonts/Vazirmatn-Bold.woff2",
-            weight: "700",
-            style: "normal",
-        },
-    ],
-    variable: "--font-vazirmatn",
-});
 
 export const metadata: Metadata = {
     title: "سیستم اعلان‌های فشاری | مدیریت اعلان‌های هوشمند بدون Firebase",
@@ -70,11 +47,5 @@ export default function IntroLayout({
 }: {
     children: React.ReactNode;
 }) {
-    return (
-        <html lang="fa" dir="rtl">
-            <body className={`${vazirmatn.variable} font-sans antialiased bg-[#030303]`}>
-                {children}
-            </body>
-        </html>
-    );
+    return <>{children}</>;
 }
