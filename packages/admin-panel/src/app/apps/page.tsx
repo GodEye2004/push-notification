@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function AppsPage() {
   const [apps, setApps] = useState<any[]>([]);
@@ -20,10 +21,14 @@ export default function AppsPage() {
   const [formData, setFormData] = useState({ app_name: "", package_name: "" });
   const [justRegistered, setJustRegistered] = useState<any>(null);
   const [copiedKey, setCopiedKey] = useState("");
+  const { token } = useAuth();
 
   const fetchApps = async () => {
+    if (!token) return;
     try {
-      const res = await fetch("http://localhost:5001/apps");
+      const res = await fetch("http://localhost:5001/apps", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       setApps(data);
     } catch (err) {
@@ -42,7 +47,10 @@ export default function AppsPage() {
     try {
       const res = await fetch("http://localhost:5001/register-app", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(formData),
       });
       const data = await res.json();

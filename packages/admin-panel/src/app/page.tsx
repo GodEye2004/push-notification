@@ -3,6 +3,7 @@
 import { Bell, Smartphone, Send, AppWindow, TrendingUp, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function Home() {
   const [stats, setStats] = useState([
@@ -12,10 +13,14 @@ export default function Home() {
     { name: "وضعیت سرور", value: "آفلاین", icon: Activity, color: "text-orange-500", bg: "bg-orange-500/10" },
   ]);
   const [history, setHistory] = useState<any[]>([]);
+  const { token } = useAuth();
 
   const fetchStats = async () => {
+    if (!token) return;
     try {
-      const res = await fetch('http://localhost:5001/api/status');
+      const res = await fetch('http://localhost:5001/api/status', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       setStats([
         { name: "تعداد برنامه‌ها", value: "3", icon: AppWindow, color: "text-blue-500", bg: "bg-blue-500/10" },

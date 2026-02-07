@@ -3,14 +3,19 @@
 import { useState, useEffect } from "react";
 import { Bell, Clock, Smartphone, CheckCircle2, AlertCircle, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function HistoryPage() {
     const [history, setHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { token } = useAuth();
 
     const fetchHistory = async () => {
+        if (!token) return;
         try {
-            const res = await fetch('http://localhost:5001/api/status');
+            const res = await fetch('http://localhost:5001/api/status', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
             const data = await res.json();
             setHistory(data.history);
         } catch (err) {

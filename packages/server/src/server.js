@@ -5,6 +5,8 @@ const webPush = require("web-push");
 const bodyParser = require("body-parser");
 const path = require("path");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
 const app = express();
 const server = http.createServer(app);
@@ -57,6 +59,9 @@ const mongoose = require("mongoose");
 const App = require("./models/App");
 const Device = require("./models/Device");
 const Notification = require("./models/Notification");
+const User = require("./models/User");
+const OTP = require("./models/OTP");
+const kavenegarService = require("./utils/kavenegar");
 
 mongoose.connect("mongodb://localhost:27017/push-notification")
   .then(() => console.log("MongoDB Connected"))
@@ -66,10 +71,80 @@ const crypto = require("crypto");
 const generateUUID = () => crypto.randomUUID();
 const generateAPIKey = () => crypto.randomBytes(32).toString("hex");
 
+// --- Middleware ---
+const authMiddleware = async (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "Access denied. No token provided." });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "supersecret123");
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(401).json({ error: "Invalid token." });
+  }
+};
+
 // --- Endpoints ---
 
+// Auth Endpoints
+app.post("/auth/send-otp", async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) return res.status(400).json({ error: "Phone number is required." });
+
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 5 * 60000); // 5 minutes
+
+  try {
+    await OTP.findOneAndUpdate({ phone }, { code, expires_at: expiresAt }, { upsert: true });
+    await kavenegarService.sendOTP(phone, code);
+    res.json({ message: "OTP sent successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/auth/verify-otp", async (req, res) => {
+  const { phone, code } = req.body;
+  if (!phone || !code) return res.status(400).json({ error: "Phone and code are required." });
+
+  try {
+    const otpDoc = await OTP.findOne({ phone, code });
+    if (!otpDoc) return res.status(400).json({ error: "Invalid or expired OTP." });
+
+    // Mark OTP as used (delete it)
+    await OTP.deleteOne({ _id: otpDoc._id });
+
+    let user = await User.findOne({ phone });
+    if (!user) {
+      user = new User({ phone });
+      await user.save();
+    }
+
+    const token = jwt.sign(
+      { id: user._id, phone: user.phone, role: user.role },
+      process.env.JWT_SECRET || "supersecret123",
+      { expiresIn: "7d" }
+    );
+
+    res.json({ token, user: { phone: user.phone, role: user.role } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/auth/me", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found." });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 0. List Apps
-app.get("/apps", async (req, res) => {
+app.get("/apps", authMiddleware, async (req, res) => {
   try {
     const apps = await App.find().sort({ created_at: -1 });
     // Aggregation to get device counts could be optimized, but for now loop or separate query
@@ -106,7 +181,7 @@ app.get("/api/status", async (req, res) => {
 });
 
 // 1. Register App
-app.post("/register-app", async (req, res) => {
+app.post("/register-app", authMiddleware, async (req, res) => {
   const { app_name, package_name } = req.body;
 
   if (!app_name || !package_name) {
@@ -177,7 +252,7 @@ app.post("/register-device", async (req, res) => {
 });
 
 // 3. Send Notification
-app.post("/send-notification", async (req, res) => {
+app.post("/send-notification", authMiddleware, async (req, res) => {
   const { app_id, targets, type, value, notification, data, api_key } = req.body;
 
   try {
