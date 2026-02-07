@@ -4,9 +4,9 @@ const { Server } = require("socket.io");
 const webPush = require("web-push");
 const bodyParser = require("body-parser");
 const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "../.env") });
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
 
 const app = express();
 const server = http.createServer(app);
