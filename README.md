@@ -2,7 +2,7 @@
 
 A comprehensive push notification system built with a monorepo architecture using Melos. This project includes a Node.js backend server, Next.js admin panel, and Flutter mobile application.
 
-## 📦 Project Structure
+## Project Structure
 
 ```
 fcm-push/
@@ -15,7 +15,7 @@ fcm-push/
 └── README.md
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -39,7 +39,7 @@ fcm-push/
    ```
    This command will install dependencies for all packages.
 
-## 📱 Running the Applications
+## Running the Applications
 
 ### Backend Server
 
@@ -127,7 +127,7 @@ melos run mobile:run      # Run the app
 melos run mobile:build    # Build release APK
 ```
 
-## 📦 Packages
+## Packages
 
 ### Server (`@fcm-push/server`)
 
@@ -168,7 +168,7 @@ Flutter application that receives push notifications.
 - Device registration
 - Socket.IO integration for real-time updates
 
-## 🔐 Configuration
+## Configuration
 
 ### Server Configuration
 
@@ -178,7 +178,7 @@ Edit `packages/server/config/service-account-key.json` with your Firebase servic
 
 Ensure MongoDB is running on `mongodb://localhost:27017/push-notification`
 
-## 🛠️ Development
+## Development
 
 ### Adding Dependencies
 
@@ -215,11 +215,11 @@ cd packages/mobile-app
 flutter build apk --release
 ```
 
-## 📝 License
+## License
 
 ISC
 
-## 🤝 Contributing
+## Contributing
 
 This is a monorepo project managed with Melos. When contributing:
 
