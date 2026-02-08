@@ -343,7 +343,7 @@ app.post("/send-notification", authMiddleware, async (req, res) => {
 
 // 4. Trigger New Product (Demo)
 app.get("/api/trigger-product", async (req, res) => {
-  const APP_ID = "72709c30-fd4c-4ede-a5f8-02d713b67de6"; // Hardcoded for demo convenience
+  const APP_ID = "4bb8012a-4372-453f-893a-9d622408aea3"; // Shopping App
   const API_KEY = "bfe9f2ac91a7f0128aeaf68baf1c34d92c4c9d1c69c715d7aaa0db1e11024416";
 
   const { product_name } = req.query;

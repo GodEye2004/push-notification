@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const BASE_URL = 'http://localhost:5001';
-const APP_ID = "72709c30-fd4c-4ede-a5f8-02d713b67de6"; // Shopping App
+const APP_ID = "4bb8012a-4372-453f-893a-9d622408aea3"; // Shopping App
 
 async function verifyTrigger() {
     try {

@@ -66,7 +66,7 @@ packages:
     source: hosted
     version: "0.7.11"
   device_info_plus:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: device_info_plus
       sha256: "4df8babf73058181227e18b08e6ea3520cf5fc5d796888d33b7cb0f33f984b7c"
@@ -111,7 +111,7 @@ packages:
     source: sdk
     version: "0.0.0"
   flutter_background_service:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: flutter_background_service
       sha256: "70a1c185b1fa1a44f8f14ecd6c86f6e50366e3562f00b2fa5a54df39b3324d3d"
@@ -151,7 +151,7 @@ packages:
     source: hosted
     version: "6.0.0"
   flutter_local_notifications:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: flutter_local_notifications
       sha256: "76cd20bcfa72fabe50ea27eeaf165527f446f55d3033021462084b87805b4cac"
@@ -192,6 +192,13 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  godeye_push_notification:
+    dependency: "direct main"
+    description:
+      path: "../godeye_push_notification"
+      relative: true
+    source: path
+    version: "1.0.0"
   http:
     dependency: "direct main"
     description:
@@ -310,7 +317,7 @@ packages:
     source: sdk
     version: "0.0.0"
   socket_io_client:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: socket_io_client
       sha256: ef6c989e5eee8d04baf18482ec3d7699b91bc41e279794a99d8e3bef897b074a
