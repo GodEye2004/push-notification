@@ -43,41 +43,46 @@ curl -X POST http://localhost:5001/register-device \\
 // 3. Send Notification
 curl -X POST http://localhost:5001/send-notification \\
   -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \\
   -d '{
     "app_id": "YOUR_APP_ID",
     "api_key": "YOUR_API_KEY",
-    "targets": "all",
+    "type": "all",
     "notification": { "title": "Hello", "body": "World" }
   }'`,
-        flutter: `import 'package:http/http.dart' as http;
-import 'dart:convert';
+        flutter: `// ۱. اضافه کردن کتابخانه به pubspec.yaml
+dependencies:
+  godeye_push_notification:
+    git:
+      url: https://github.com/GodEye2004/push-notification.git
+      path: packages/godeye_push_notification
 
-Future<void> registerDevice() async {
-  final url = Uri.parse('http://YOUR_SERVER_IP:5001/register-device');
-  
-  // Get these from your device info plugin
-  final deviceData = {
-    "app_id": "YOUR_APP_ID_FROM_PANEL",
-    "device_id": "unique-device-id",
-    "platform": "android", // or ios
-    "os_version": "14.0",
-    "app_version": "1.0.0",
-    "device_model": "Pixel 7",
-    "push_token": "FCM_TOKEN", // Get from Firebase Messaging
-  };
+// ۲. مقداردهی اولیه در تابع main
+import 'package:godeye_push_notification/godeye_push_notification.dart';
 
-  final response = await http.post(
-    url,
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode(deviceData),
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final pushService = PushNotificationService();
+  await pushService.initialize(
+    serverUrl: "http://YOUR_SERVER_IP:5001",
+    appId: "YOUR_APP_ID_FROM_PANEL",
   );
 
-  if (response.statusCode == 200) {
-    print("Device registered!");
-  } else {
-    print("Error: \${response.body}");
+  runApp(const MyApp());
+}
+
+// ۳. گوش دادن به تغییرات وضعیت و ثبت دستگاه
+pushService.onSocketId.listen((socketId) async {
+  if (socketId != null) {
+    bool success = await pushService.registerDevice(
+      socketId: socketId,
+      deviceId: "شناسه_یکتای_دستگاه", // مثلا از device_info_plus بگیرید
+      deviceModel: "مدل_دستگاه",
+    );
+    if (success) print("دستگاه با موفقیت ثبت شد!");
   }
-}`,
+});`,
         android: `// Kotlin / OkHttp
 val json = JSONObject().apply {
     put("app_id", "YOUR_APP_ID_FROM_PANEL")
@@ -99,7 +104,7 @@ client.newCall(request).execute()`
         <div className="space-y-8 pb-20">
             <div>
                 <h1 className="text-3xl font-bold text-white mb-2">مستندات</h1>
-                <p className="text-muted-foreground">تسلط بر فرآیند ۳ مرحله‌ای: ثبت برنامه &larr; ثبت دستگاه &larr; ارسال اعلان.</p>
+                <p className="text-muted-foreground">تسلط بر فرآیند ۳ مرحله‌ای: ثبت برنامه &larr; ثبت دستگاه &larr; ارسال اعلان. (بدون نیاز به فایربیس و کاملاً بومی)</p>
             </div>
 
             <div className="flex flex-wrap gap-4 p-1 bg-white/5 rounded-2xl w-fit">
