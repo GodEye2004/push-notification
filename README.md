@@ -84,7 +84,7 @@ cd packages/mobile-app
 flutter run
 ```
 
-## 🔧 Available Scripts
+## Available Scripts
 
 ### Root Level Commands
 
