@@ -4,6 +4,7 @@ import { Bell, Smartphone, Send, AppWindow, TrendingUp, Activity } from "lucide-
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { API_URL } from "@/lib/config";
 
 export default function Home() {
   const [stats, setStats] = useState([
@@ -18,7 +19,7 @@ export default function Home() {
   const fetchStats = async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:5001/api/status', {
+      const res = await fetch(`${API_URL}/api/status`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();

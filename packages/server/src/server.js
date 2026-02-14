@@ -63,7 +63,7 @@ const User = require("./models/User");
 const OTP = require("./models/OTP");
 const kavenegarService = require("./utils/kavenegar");
 
-mongoose.connect("mongodb://localhost:27017/push-notification")
+mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/push-notification")
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.error("MongoDB Connection Error:", err));
 
@@ -413,5 +413,5 @@ app.get("/api/trigger-product", async (req, res) => {
   }
 });
 
-const port = 5001;
+const port = process.env.PORT || 5001;
 server.listen(port, () => console.log(`Server started on port ${port}`));

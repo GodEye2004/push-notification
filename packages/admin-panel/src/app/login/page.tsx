@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { API_URL } from "@/lib/config";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function LoginPage() {
@@ -18,7 +19,7 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            const response = await fetch("http://localhost:5001/auth/send-otp", {
+            const response = await fetch(`${API_URL}/auth/send-otp`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ phone }),

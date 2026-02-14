@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { API_URL } from "@/lib/config";
 
 export default function AppsPage() {
   const [apps, setApps] = useState<any[]>([]);
@@ -26,7 +27,7 @@ export default function AppsPage() {
   const fetchApps = async () => {
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:5001/apps", {
+      const res = await fetch(`${API_URL}/apps`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -45,7 +46,7 @@ export default function AppsPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:5001/register-app", {
+      const res = await fetch(`${API_URL}/register-app`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

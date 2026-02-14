@@ -15,6 +15,7 @@ import {
 import { MobilePreview } from "@/components/MobilePreview";
 import { motion } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
+import { API_URL } from "@/lib/config";
 
 interface App {
   id: string;
@@ -44,7 +45,7 @@ export default function SendNotificationPage() {
   // Fetch Apps on Load
   useEffect(() => {
     if (!token) return;
-    fetch("http://localhost:5001/apps", {
+    fetch(`${API_URL}/apps`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -82,7 +83,7 @@ export default function SendNotificationPage() {
         },
       };
 
-      const res = await fetch("http://localhost:5001/send-notification", {
+      const res = await fetch(`${API_URL}/send-notification`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -153,7 +154,7 @@ export default function SendNotificationPage() {
             </div>
 
             {/* Content Section */}
-            <div className="space-y-6">  
+            <div className="space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-white/70">
                   عنوان اعلان
@@ -214,8 +215,8 @@ export default function SendNotificationPage() {
                     setFormData({ ...formData, targetType: "all" })
                   }
                   className={`flex items-center justify-center gap-3 p-4 rounded-xl border transition-all ${formData.targetType === "all"
-                      ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10"
-                      : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
+                    ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10"
+                    : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
                     }`}
                 >
                   <Globe className="w-5 h-5" />
@@ -227,8 +228,8 @@ export default function SendNotificationPage() {
                     setFormData({ ...formData, targetType: "specific" })
                   }
                   className={`flex items-center justify-center gap-3 p-4 rounded-xl border transition-all ${formData.targetType === "specific"
-                      ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10"
-                      : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
+                    ? "bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10"
+                    : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
                     }`}
                 >
                   <Smartphone className="w-5 h-5" />
@@ -263,8 +264,8 @@ export default function SendNotificationPage() {
             {msg && (
               <div
                 className={`p-4 rounded-xl flex items-center gap-2 ${msg.type === "success"
-                    ? "bg-green-500/10 text-green-500 border border-green-500/20"
-                    : "bg-red-500/10 text-red-500 border border-red-500/20"
+                  ? "bg-green-500/10 text-green-500 border border-green-500/20"
+                  : "bg-red-500/10 text-red-500 border border-red-500/20"
                   }`}
               >
                 {msg.type === "success" ? (

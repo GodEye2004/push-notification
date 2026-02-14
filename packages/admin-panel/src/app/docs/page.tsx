@@ -21,14 +21,14 @@ export default function DocsPage() {
 
     const snippets = {
         api: `// 1. Register App
-curl -X POST http://localhost:5001/register-app \\
+curl -X POST http://localhost:3000/register-app \\
   -H "Content-Type: application/json" \\
   -d '{ "app_name": "My App", "package_name": "com.example" }'
 
 // Response: { "app_id": "UUID", "api_key": "KEY", ... }
 
 // 2. Register Device
-curl -X POST http://localhost:5001/register-device \\
+curl -X POST http://localhost:3000/register-device \\
   -H "Content-Type: application/json" \\
   -d '{
     "app_id": "YOUR_APP_ID",
@@ -41,7 +41,7 @@ curl -X POST http://localhost:5001/register-device \\
   }'
 
 // 3. Send Notification
-curl -X POST http://localhost:5001/send-notification \\
+curl -X POST http://localhost:3000/send-notification \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \\
   -d '{

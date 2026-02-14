@@ -2,6 +2,7 @@
 
 import { admin } from "@/lib/firebase";
 import { NextResponse } from "next/server";
+import { SERVER_API_URL } from "@/lib/config";
 
 export async function POST(req: Request) {
   try {
@@ -11,7 +12,7 @@ export async function POST(req: Request) {
     try {
       console.log("Forwarding to index.js:", { title, body, imageUrl });
       const nodeRes = await fetch(
-        "http://localhost:5001/send-notification",
+        `${SERVER_API_URL}/send-notification`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

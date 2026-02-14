@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { API_URL } from "@/lib/config";
 
 interface AuthContextType {
     user: any;
@@ -39,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [token, isLoading, pathname, router]);
 
     const login = async (phone: string, code: string) => {
-        const response = await fetch("http://localhost:5001/auth/verify-otp", {
+        const response = await fetch(`${API_URL}/auth/verify-otp`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ phone, code }),

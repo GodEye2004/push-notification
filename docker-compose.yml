@@ -1,0 +1,38 @@
+services:
+  server:
+    build: ./packages/server
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - MONGO_URI=mongodb://mongo:27017/fcm-push
+    depends_on:
+      - mongo
+    networks:
+      - app-network
+
+  admin-panel:
+    build: ./packages/admin-panel
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - SERVER_API_URL=http://server:3000
+    networks:
+      - app-network
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
