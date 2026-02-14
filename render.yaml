@@ -1,0 +1,38 @@
+services:
+  # 1. Backend Server
+  - type: web
+    name: fcm-push-server
+    env: docker
+    region: frankfurt
+    plan: free
+    dockerContext: packages/server
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: MONGO_URI
+        sync: false # User must provide this (e.g. from MongoDB Atlas)
+      - key: JWT_SECRET
+        generateValue: true
+
+  # 2. Frontend Admin Panel
+  - type: web
+    name: fcm-push-admin
+    env: docker
+    region: frankfurt
+    plan: free
+    dockerContext: packages/admin-panel
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: fcm-push-server
+          property: url
+      - key: SERVER_API_URL
+        fromService:
+          type: web
+          name: fcm-push-server
+          property: url
