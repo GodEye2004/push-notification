@@ -63,9 +63,14 @@ const User = require("./models/User");
 const OTP = require("./models/OTP");
 const kavenegarService = require("./utils/kavenegar");
 
-mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/push-notification")
+// mongoose.connect(process.env.MONGO_URI || "mongodb://192.168.100.108:27017/push-notification")
+//   .then(() => console.log("MongoDB Connected"))
+//   .catch(err => console.error("MongoDB Connection Error:", err));
+
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.error("MongoDB Connection Error:", err));
+
 
 const crypto = require("crypto");
 const generateUUID = () => crypto.randomUUID();

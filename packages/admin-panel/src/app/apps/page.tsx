@@ -100,7 +100,7 @@ export default function AppsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {apps.length === 0 && (
           <div className="col-span-full py-12 text-center text-muted-foreground">
-            هنوز برنامه‌ای ثبت نشده است. برای شروع روی "افزودن برنامه جدید" کلیک کنید.
+            هنوز برنامه‌ای ثبت نشده است. برای شروع روی &quot;افزودن برنامه جدید&quot; کلیک کنید.
           </div>
         )}
         {apps.map((app, i) => (
