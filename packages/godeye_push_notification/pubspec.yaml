@@ -1,6 +1,6 @@
 name: godeye_push_notification
 description: "Production-ready push notification service for Flutter. Supports Firebase FCM (background/terminated) + Socket.IO (real-time foreground) with automatic fallback and pending delivery."
-version: 1.1.0
+version: 2.0.0
 homepage: https://github.com/GodEye2004/push-notification
 repository: https://github.com/GodEye2004/push-notification/tree/main/packages/godeye_push_notification
 
