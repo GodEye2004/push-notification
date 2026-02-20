@@ -94,12 +94,16 @@ export default function SendNotificationPage() {
 
       const data = await res.json();
 
-      if (data.status === "sent") {
-        setMsg({
-          type: "success",
-          text: `به ${data.sent_to.length} دستگاه ارسال شد!`,
-        });
-        // Optional: Clear form
+      if (data.status === "queued" || data.status === "sent") {
+        const parts: string[] = [];
+        if (data.socket_sent?.length > 0)
+          parts.push(`آنلاین (Socket): ${data.socket_sent.length}`);
+        if (data.fcm_sent?.length > 0)
+          parts.push(`آفلاین (FCM): ${data.fcm_sent.length}`);
+        if (data.pending?.length > 0)
+          parts.push(`معوق: ${data.pending.length}`);
+        const summary = parts.length > 0 ? parts.join(" | ") : `مجموع: ${data.total ?? 0}`;
+        setMsg({ type: "success", text: `ارسال موفق — ${summary}` });
       } else {
         setMsg({ type: "error", text: data.error || "ارسال با خطا مواجه شد." });
       }
@@ -134,7 +138,7 @@ export default function SendNotificationPage() {
               </label>
               {apps.length === 0 ? (
                 <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-sm">
-                  برنامه‌ای ثبت نشده است. برای ایجاد به صفحه "برنامه‌ها" بروید.
+                  برنامه‌ای ثبت نشده است. برای ایجاد به صفحه &quot;برنامه‌ها&quot; بروید.
                 </div>
               ) : (
                 <select

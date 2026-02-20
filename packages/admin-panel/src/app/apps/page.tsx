@@ -17,27 +17,56 @@ import { useAuth } from "@/components/AuthProvider";
 import { API_URL } from "@/lib/config";
 
 export default function AppsPage() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [apps, setApps] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({ app_name: "", package_name: "" });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [justRegistered, setJustRegistered] = useState<any>(null);
   const [copiedKey, setCopiedKey] = useState("");
   const { token } = useAuth();
 
+  // const fetchApps = async () => {
+  //   if (!token) return;
+  //   try {
+  //     const res = await fetch(`${API_URL}/apps`, {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     });
+  //     const data = await res.json();
+  //     setApps(data);
+  //   } catch (err) {
+  //     console.error(err);
+  //   }
+  // };
+
   const fetchApps = async () => {
     if (!token) return;
+
     try {
       const res = await fetch(`${API_URL}/apps`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      // for token expired
+      if (res.status === 401) {
+        (console.warn("Token expired. redirect to log in"),
+          // phase 1 : clear token
+          localStorage.removeItem("token"));
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        throw new Error("Failed to fetch apps");
+      }
       const data = await res.json();
-      setApps(data);
+
+      setApps(Array.isArray(data) ? data : (data.apps ?? []));
     } catch (err) {
       console.error(err);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchApps();
     const interval = setInterval(fetchApps, 5000);
     return () => clearInterval(interval);
@@ -100,7 +129,8 @@ export default function AppsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {apps.length === 0 && (
           <div className="col-span-full py-12 text-center text-muted-foreground">
-            هنوز برنامه‌ای ثبت نشده است. برای شروع روی &quot;افزودن برنامه جدید&quot; کلیک کنید.
+            هنوز برنامه‌ای ثبت نشده است. برای شروع روی &quot;افزودن برنامه
+            جدید&quot; کلیک کنید.
           </div>
         )}
         {apps.map((app, i) => (
@@ -130,14 +160,20 @@ export default function AppsPage() {
 
               <div className="space-y-2 pt-4 border-t border-white/5">
                 <div>
-                  <p className="text-[10px] uppercase font-bold text-white/30 tracking-widest mb-1">شناسه برنامه</p>
-                  <code className="text-xs bg-black/30 p-1 rounded text-white/70 block truncate">{app.id}</code>
+                  <p className="text-[10px] uppercase font-bold text-white/30 tracking-widest mb-1">
+                    شناسه برنامه
+                  </p>
+                  <code className="text-xs bg-black/30 p-1 rounded text-white/70 block truncate">
+                    {app.id}
+                  </code>
                 </div>
               </div>
 
               <div className="flex gap-2 pt-2">
                 <button
-                  onClick={() => copyToClipboard(app.api_key, `apikey-${app.id}`)}
+                  onClick={() =>
+                    copyToClipboard(app.api_key, `apikey-${app.id}`)
+                  }
                   className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-white/80 hover:bg-white/10 transition-all"
                 >
                   <Shield className="w-3.5 h-3.5" />
@@ -234,10 +270,16 @@ export default function AppsPage() {
                           {justRegistered.app_id}
                         </code>
                         <button
-                          onClick={() => copyToClipboard(justRegistered.app_id, "id")}
+                          onClick={() =>
+                            copyToClipboard(justRegistered.app_id, "id")
+                          }
                           className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-white/70 transition-colors"
                         >
-                          {copiedKey === "id" ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          {copiedKey === "id" ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -251,16 +293,24 @@ export default function AppsPage() {
                           {justRegistered.api_key}
                         </code>
                         <button
-                          onClick={() => copyToClipboard(justRegistered.api_key, "key")}
+                          onClick={() =>
+                            copyToClipboard(justRegistered.api_key, "key")
+                          }
                           className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-white/70 transition-colors"
                         >
-                          {copiedKey === "key" ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          {copiedKey === "key" ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </div>
 
                     <div className="pt-4 border-t border-white/10">
-                      <h4 className="text-white font-semibold mb-2">کد ادغام</h4>
+                      <h4 className="text-white font-semibold mb-2">
+                        کد ادغام
+                      </h4>
                       <p className="text-sm text-muted-foreground mb-2">
                         این کد را در برنامه خود کپی کنید تا دستگاه ثبت شود:
                       </p>
@@ -327,26 +377,31 @@ client.newCall(request).execute()`;
       <div className="flex border-b border-white/10">
         <button
           onClick={() => setActiveTab("flutter")}
-          className={`px-4 py-2 text-xs font-bold transition-colors ${activeTab === "flutter"
-            ? "text-primary border-b-2 border-primary bg-white/5"
-            : "text-muted-foreground hover:text-white"
-            }`}
+          className={`px-4 py-2 text-xs font-bold transition-colors ${
+            activeTab === "flutter"
+              ? "text-primary border-b-2 border-primary bg-white/5"
+              : "text-muted-foreground hover:text-white"
+          }`}
         >
           فلاتر
         </button>
         <button
           onClick={() => setActiveTab("android")}
-          className={`px-4 py-2 text-xs font-bold transition-colors ${activeTab === "android"
-            ? "text-primary border-b-2 border-primary bg-white/5"
-            : "text-muted-foreground hover:text-white"
-            }`}
+          className={`px-4 py-2 text-xs font-bold transition-colors ${
+            activeTab === "android"
+              ? "text-primary border-b-2 border-primary bg-white/5"
+              : "text-muted-foreground hover:text-white"
+          }`}
         >
           اندروید نیتیو
         </button>
-      </div >
-      <div className="p-3 text-xs text-white/70 font-mono overflow-auto max-h-48 whitespace-pre" dir="ltr">
+      </div>
+      <div
+        className="p-3 text-xs text-white/70 font-mono overflow-auto max-h-48 whitespace-pre"
+        dir="ltr"
+      >
         {activeTab === "flutter" ? flutterCode : androidCode}
       </div>
-    </div >
+    </div>
   );
 }

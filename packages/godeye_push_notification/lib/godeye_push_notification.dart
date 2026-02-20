@@ -1,239 +1,479 @@
-library godeye_push_notification;
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
-
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Channel constants (shared between isolates)
+// ─────────────────────────────────────────────────────────────────────────────
+const _kChannelId = 'push_notifications_channel_v3';
+const _kChannelName = 'Push Notifications';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FCM Background Handler — top-level, called when app is terminated/background
+// ─────────────────────────────────────────────────────────────────────────────
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    Firebase.app();
+  } catch (_) {
+    await Firebase.initializeApp();
+  }
+
+  debugPrint('[FCM BG] messageId=${message.messageId}');
+
+  // Only show local notification for pure data messages.
+  // Notification messages are shown automatically by the OS.
+  if (message.notification == null && message.data.isNotEmpty) {
+    final plugin = FlutterLocalNotificationsPlugin();
+    await plugin.initialize(
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        iOS: DarwinInitializationSettings(),
+      ),
+    );
+    await plugin.show(
+      id: DateTime.now().millisecond % 100000,
+      title: message.data['title'] ?? 'New Notification',
+      body: message.data['body'] ?? '',
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          _kChannelId,
+          _kChannelName,
+          importance: Importance.max,
+          priority: Priority.high,
+          channelShowBadge: true,
+        ),
+        iOS: DarwinNotificationDetails(badgeNumber: 1),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PushNotificationService
+// ─────────────────────────────────────────────────────────────────────────────
 class PushNotificationService {
   static final PushNotificationService _instance =
       PushNotificationService._internal();
   factory PushNotificationService() => _instance;
   PushNotificationService._internal();
 
-  static const String _channelId = 'push_notifications_channel_v3';
-  static const String _channelName = 'Push Notifications';
+  static const String _deviceIdKey = 'push_device_id';
 
   String? _serverUrl;
   String? _appId;
+  String? _deviceId;
+  String? _deviceModel;
+  String? _appVersion;
 
-  /// Initialize the push notification service.
-  /// [serverUrl] is the URL of your Node.js server.
-  /// [appId] is the unique identifier for your application.
+  /// Stream of RemoteMessage when user taps a notification
+  final StreamController<RemoteMessage> _notificationTapController =
+      StreamController<RemoteMessage>.broadcast();
+  Stream<RemoteMessage> get onNotificationTap =>
+      _notificationTapController.stream;
+
+  // ─── Device ID ─────────────────────────────────────────────────────────────
+  Future<String> _getPersistentDeviceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? deviceId = prefs.getString(_deviceIdKey);
+    if (deviceId != null) return deviceId;
+
+    final info = DeviceInfoPlugin();
+    if (Platform.isAndroid) {
+      final android = await info.androidInfo;
+      deviceId = 'android_${android.id}';
+    } else if (Platform.isIOS) {
+      final ios = await info.iosInfo;
+      deviceId =
+          'ios_${ios.identifierForVendor ?? DateTime.now().millisecondsSinceEpoch}';
+    } else {
+      deviceId = 'unknown_${DateTime.now().millisecondsSinceEpoch}';
+    }
+
+    await prefs.setString(_deviceIdKey, deviceId!);
+    return deviceId;
+  }
+
+  // ─── FCM Token ─────────────────────────────────────────────────────────────
+  Future<String?> _getFcmToken() async {
+    try {
+      Firebase.app();
+    } catch (_) {
+      await Firebase.initializeApp();
+    }
+    try {
+      final messaging = FirebaseMessaging.instance;
+      await messaging.requestPermission(alert: true, badge: true, sound: true);
+      final token = await messaging.getToken();
+      debugPrint('[FCM] Token: $token');
+      return token;
+    } catch (e) {
+      debugPrint('[FCM] getToken error: $e');
+      return null;
+    }
+  }
+
+  // ─── Token Refresh ──────────────────────────────────────────────────────────
+  Future<void> _sendUpdatedPushToken(String token) async {
+    if (_serverUrl == null || _deviceId == null || _appId == null) return;
+    try {
+      await http.post(
+        Uri.parse('$_serverUrl/update-fcm-token'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'app_id': _appId,
+          'device_id': _deviceId,
+          'push_token': token,
+        }),
+      );
+      debugPrint('[FCM] Token refreshed on server');
+    } catch (e) {
+      debugPrint('[FCM] Token refresh error: $e');
+    }
+  }
+
+  // ─── Initialize ────────────────────────────────────────────────────────────
   Future<void> initialize({
     required String serverUrl,
     required String appId,
+    String? deviceModel,
+    String? appVersion,
   }) async {
     _serverUrl = serverUrl;
     _appId = appId;
+    _deviceModel = deviceModel ?? 'Unknown Device';
+    _appVersion = appVersion ?? '1.0.0';
 
-    final service = FlutterBackgroundService();
-    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    _deviceId = await _getPersistentDeviceId();
+    final fcmToken = await _getFcmToken();
 
-    // 1. Setup Local Notifications
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      _channelId,
-      _channelName,
-      description: 'This channel is used for push notifications.',
-      importance: Importance.high,
-    );
+    // Must be called before runApp (registered in main.dart),
+    // but we call here in case library user forgets.
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-    await flutterLocalNotificationsPlugin
+    // Foreground FCM messages
+    FirebaseMessaging.onMessage.listen((msg) {
+      debugPrint('[FCM FG] messageId=${msg.messageId}');
+      _showLocalNotificationFg(msg);
+    });
+
+    // App opened from background notification tap
+    FirebaseMessaging.onMessageOpenedApp.listen((msg) {
+      debugPrint('[FCM] Opened from background notification');
+      _notificationTapController.add(msg);
+    });
+
+    // App launched from terminated notification tap
+    final initialMsg = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMsg != null) {
+      debugPrint('[FCM] App launched from notification');
+      Future.delayed(
+        const Duration(milliseconds: 500),
+        () => _notificationTapController.add(initialMsg),
+      );
+    }
+
+    // Token auto-refresh
+    FirebaseMessaging.instance.onTokenRefresh.listen(_sendUpdatedPushToken);
+
+    // Local notifications channel setup
+    final plugin = FlutterLocalNotificationsPlugin();
+    await plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >()
-        ?.createNotificationChannel(channel);
+        ?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            _kChannelId,
+            _kChannelName,
+            description: 'Push notifications channel',
+            importance: Importance.high,
+          ),
+        );
 
-    await flutterLocalNotificationsPlugin.initialize(
+    await plugin.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         iOS: DarwinInitializationSettings(),
       ),
     );
 
-    // 2. Configure Background Service
+    // Background service (Socket.IO)
+    final service = FlutterBackgroundService();
     await service.configure(
       androidConfiguration: AndroidConfiguration(
         onStart: onStart,
         autoStart: true,
         isForegroundMode: true,
-        notificationChannelId: _channelId,
-        initialNotificationTitle: 'Push Service Running',
-        initialNotificationContent: 'Waiting for notifications...',
+        notificationChannelId: _kChannelId,
+        initialNotificationTitle: 'Push Service',
+        initialNotificationContent: 'Connecting...',
         foregroundServiceNotificationId: 888,
       ),
       iosConfiguration: IosConfiguration(),
     );
 
-    // Store config for the background isolate
+    // Pass config to background isolate
     Timer.periodic(const Duration(seconds: 2), (timer) async {
       if (await service.isRunning()) {
-        service.invoke("set_config", {"serverUrl": serverUrl, "appId": appId});
+        service.invoke('set_config', {
+          'serverUrl': serverUrl,
+          'appId': appId,
+          'deviceId': _deviceId,
+          'deviceModel': _deviceModel,
+          'appVersion': _appVersion,
+          'fcmToken': fcmToken,
+        });
+        timer.cancel();
       }
-    });
-
-    service.on('config_ack').listen((event) {
-      debugPrint("PushNotificationService: Background isolate initialized.");
     });
   }
 
-  /// Listen for socket ID changes. Useful for registration.
+  // ─── Show local notification (foreground FCM) ──────────────────────────────
+  void _showLocalNotificationFg(RemoteMessage message) {
+    final title =
+        message.notification?.title ?? message.data['title'] ?? 'New Message';
+    final body = message.notification?.body ?? message.data['body'] ?? '';
+
+    FlutterLocalNotificationsPlugin().show(
+      id: DateTime.now().millisecond % 100000,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          _kChannelId,
+          _kChannelName,
+          importance: Importance.max,
+          priority: Priority.high,
+          channelShowBadge: true,
+        ),
+        iOS: DarwinNotificationDetails(badgeNumber: 1),
+      ),
+    );
+  }
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
   Stream<String?> get onSocketId => FlutterBackgroundService()
       .on('socket_id')
       .map((event) => event?['id'] as String?);
 
-  /// Request the current socket ID from the background service.
-  void requestSocketId() {
-    FlutterBackgroundService().invoke("get_socket_id");
-  }
-
-  /// Register the device with the backend.
-  Future<bool> registerDevice({
-    required String socketId,
-    required String deviceId,
-    String? deviceModel,
-    String? appVersion,
-  }) async {
-    if (_serverUrl == null || _appId == null) return false;
-
-    try {
-      final body = {
-        "app_id": _appId,
-        "device_id": deviceId,
-        "platform": Platform.isAndroid ? "android" : "ios",
-        "os_version": Platform.operatingSystemVersion,
-        "app_version": appVersion ?? "1.0.0",
-        "device_model": deviceModel ?? "Generic Device",
-        "push_token": socketId,
-      };
-
-      final response = await http.post(
-        Uri.parse('$_serverUrl/register-device'),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body),
-      );
-
-      return response.statusCode == 200;
-    } catch (e) {
-      debugPrint("PushNotificationService: Registration Error: $e");
-      return false;
-    }
-  }
+  void requestSocketId() => FlutterBackgroundService().invoke('get_socket_id');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Background Service Entry Point (runs in a separate Dart isolate)
+// ─────────────────────────────────────────────────────────────────────────────
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
   try {
     DartPluginRegistrant.ensureInitialized();
   } catch (e) {
-    debugPrint("PushNotificationService: DartPluginRegistrant error: $e");
+    debugPrint('[BG] DartPluginRegistrant error: $e');
   }
 
-  final localNotifications = FlutterLocalNotificationsPlugin();
-
+  final plugin = FlutterLocalNotificationsPlugin();
   try {
-    await localNotifications.initialize(
+    await plugin.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        iOS: DarwinInitializationSettings(),
       ),
     );
   } catch (e) {
-    debugPrint("PushNotificationService: LocalNotifications init error: $e");
+    debugPrint('[BG] LocalNotifications init error: $e');
   }
 
   String? serverUrl;
+  String? appId;
+  String? deviceId;
+  String? deviceModel;
+  String? appVersion;
+  String? fcmToken;
 
   service.on('set_config').listen((event) {
     if (event != null && serverUrl == null) {
       serverUrl = event['serverUrl'];
-      service.invoke("config_ack", {});
-      _initSocket(service, localNotifications, serverUrl!);
+      appId = event['appId'];
+      deviceId = event['deviceId'];
+      deviceModel = event['deviceModel'];
+      appVersion = event['appVersion'];
+      fcmToken = event['fcmToken'];
+      service.invoke('config_ack', {});
+
+      _initSocket(
+        service,
+        plugin,
+        serverUrl!,
+        appId!,
+        deviceId!,
+        deviceModel!,
+        appVersion!,
+        fcmToken,
+      );
     }
   });
 
   if (service is AndroidServiceInstance) {
-    service.on('setAsForeground').listen((event) {
-      service.setAsForegroundService();
-    });
-
-    service.on('setAsBackground').listen((event) {
-      service.setAsBackgroundService();
-    });
+    service
+        .on('setAsForeground')
+        .listen((_) => service.setAsForegroundService());
+    service
+        .on('setAsBackground')
+        .listen((_) => service.setAsBackgroundService());
   }
-
-  service.on('stopService').listen((event) {
-    service.stopSelf();
-  });
+  service.on('stopService').listen((_) => service.stopSelf());
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Show notification from background isolate
+// ─────────────────────────────────────────────────────────────────────────────
+Future<void> _showLocalNotification(
+  FlutterLocalNotificationsPlugin plugin,
+  Map<String, dynamic> data,
+) async {
+  final title =
+      data['notification']?['title'] ?? data['title'] ?? 'New Message';
+  final body = data['notification']?['body'] ?? data['body'] ?? '';
+
+  await plugin.show(
+    id: DateTime.now().millisecond % 100000,
+    title: title,
+    body: body,
+    notificationDetails: NotificationDetails(
+      android: AndroidNotificationDetails(
+        _kChannelId,
+        _kChannelName,
+        importance: Importance.max,
+        priority: Priority.high,
+        channelShowBadge: true,
+        styleInformation: BigTextStyleInformation(
+          body,
+          htmlFormatBigText: true,
+          contentTitle: title,
+          htmlFormatContentTitle: true,
+        ),
+      ),
+      iOS: const DarwinNotificationDetails(badgeNumber: 1),
+    ),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Socket.IO connection (background isolate)
+// ─────────────────────────────────────────────────────────────────────────────
 void _initSocket(
   ServiceInstance service,
-  FlutterLocalNotificationsPlugin localNotifications,
+  FlutterLocalNotificationsPlugin plugin,
   String serverUrl,
+  String appId,
+  String deviceId,
+  String deviceModel,
+  String appVersion,
+  String? fcmToken,
 ) {
-  IO.Socket socket = IO.io(
+  final socket = IO.io(
     serverUrl,
     IO.OptionBuilder()
         .setTransports(['websocket', 'polling'])
         .enableAutoConnect()
+        // Send deviceId in auth so server joins us to the correct room
+        .setAuth({'deviceId': deviceId})
         .build(),
   );
 
-  socket.onConnect((_) {
+  socket.onConnect((_) async {
+    debugPrint('[Socket] Connected: ${socket.id}');
+
     if (service is AndroidServiceInstance) {
       service.setForegroundNotificationInfo(
-        title: "Push Service",
-        content: "Connected to server",
+        title: 'Push Service',
+        content: 'Connected ✓',
       );
-      service.invoke("socket_id", {"id": socket.id});
+      service.invoke('socket_id', {'id': socket.id});
+    }
+
+    // Register device (sends FCM token to server)
+    try {
+      await http.post(
+        Uri.parse('$serverUrl/register-device'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'app_id': appId,
+          'device_id': deviceId,
+          'platform': Platform.isAndroid ? 'android' : 'ios',
+          'os_version': Platform.operatingSystemVersion,
+          'app_version': appVersion,
+          'device_model': deviceModel,
+          'push_token': fcmToken, // real FCM token (not socket.id)
+        }),
+      );
+      debugPrint('[Socket] Device registered');
+    } catch (e) {
+      debugPrint('[Socket] Register error: $e');
+    }
+
+    // Fetch pending notifications from server
+    try {
+      final resp = await http.get(
+        Uri.parse('$serverUrl/pending-notifications/$deviceId'),
+      );
+      if (resp.statusCode == 200) {
+        final pending = jsonDecode(resp.body) as List;
+        for (final n in pending) {
+          await _showLocalNotification(
+            plugin,
+            Map<String, dynamic>.from(n as Map),
+          );
+        }
+        if (pending.isNotEmpty) {
+          debugPrint('[Socket] ${pending.length} pending shown');
+        }
+      }
+    } catch (e) {
+      debugPrint('[Socket] Pending fetch error: $e');
     }
   });
 
-  socket.on('push-notification', (data) {
-    String? title =
-        data['notification']?['title'] ?? data['title'] ?? 'New Message';
-    String? body =
-        data['notification']?['body'] ??
-        data['body'] ??
-        'You have a new notification';
+  socket.onDisconnect((_) {
+    debugPrint('[Socket] Disconnected');
+    if (service is AndroidServiceInstance) {
+      service.setForegroundNotificationInfo(
+        title: 'Push Service',
+        content: 'Reconnecting...',
+      );
+    }
+  });
 
-    final style = BigTextStyleInformation(
-      body!,
-      htmlFormatBigText: true,
-      contentTitle: title,
-      htmlFormatContentTitle: true,
-    );
-
-    localNotifications.show(
-      id: DateTime.now().millisecond % 100000,
-      title: title,
-      body: body,
-      notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(
-          'push_notifications_channel_v3',
-          'Push Notifications',
-          importance: Importance.max,
-          priority: Priority.high,
-          styleInformation: style,
-        ),
-      ),
+  socket.on('push-notification', (data) async {
+    debugPrint('[Socket] Notification received');
+    await _showLocalNotification(
+      plugin,
+      data is Map<String, dynamic>
+          ? data
+          : Map<String, dynamic>.from(data as Map),
     );
   });
 
-  service.on('get_socket_id').listen((event) {
+  service.on('get_socket_id').listen((_) {
     if (socket.connected && socket.id != null) {
-      service.invoke("socket_id", {"id": socket.id});
+      service.invoke('socket_id', {'id': socket.id});
     }
   });
 
-  Timer.periodic(const Duration(seconds: 10), (timer) {
+  // Reconnect watchdog every 15 s
+  Timer.periodic(const Duration(seconds: 15), (_) {
     if (!socket.connected) {
+      debugPrint('[Socket] Reconnecting...');
       socket.connect();
     }
   });

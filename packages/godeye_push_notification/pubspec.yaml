@@ -1,6 +1,6 @@
 name: godeye_push_notification
-description: "A professional push notification and background service for Flutter without Firebase. Connects to your custom Node.js/Socket.io backend."
-version: 1.0.0
+description: "Production-ready push notification service for Flutter. Supports Firebase FCM (background/terminated) + Socket.IO (real-time foreground) with automatic fallback and pending delivery."
+version: 1.1.0
 homepage: https://github.com/GodEye2004/push-notification
 repository: https://github.com/GodEye2004/push-notification/tree/main/packages/godeye_push_notification
 
@@ -16,6 +16,9 @@ dependencies:
   socket_io_client: ^3.1.4
   device_info_plus: ^12.3.0
   http: ^1.6.0
+  shared_preferences: ^2.5.4
+  firebase_core: ^4.4.0
+  firebase_messaging: ^16.1.1
 
 dev_dependencies:
   flutter_test:

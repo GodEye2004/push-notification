@@ -1,60 +1,66 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const webPush = require("web-push");
 const bodyParser = require("body-parser");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "../.env") });
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-  },
+  cors: { origin: "*" },
+});
+
+// ─── Firebase Admin ───────────────────────────────────────────────────────────
+const admin = require("firebase-admin");
+const serviceAccount = require("../config/service-account-key.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
 });
 
 app.use(cors());
 app.use(bodyParser.json());
-// Note: Adjust public path if needed in the future
-// app.use(express.static(path.join(__dirname, "../../public")));
 
+// ─── In-memory state ──────────────────────────────────────────────────────────
+// deviceId → Set of socketIds (a device can have multiple tabs/connections)
+const activeClients = new Map();
 
-// Web Push setup (keeping it for the demo page)
-const publicVapidKey =
-  "BFOSCSgV2v4UBBMmaji0CeZ1SR__yfyvG_4a3M5QiRGDAjg6xi0xsMzsVQC9YGRnBx3W9aGsAXy0AHUNb5AJfF4";
-const privateVapidKey = "JkkTiW13BOC2PYkFhIf8XJYeaSvBf-RE9zO4DbiI2w4";
-
-webPush.setVapidDetails(
-  "mailto:test@test.com",
-  publicVapidKey,
-  privateVapidKey,
-);
-
-let subscriptions = [];
-let notificationHistory = [];
-let activeClients = new Map();
-
+// ─── Socket.IO ────────────────────────────────────────────────────────────────
+// FIX: was "connecting" (invalid event) → must be "connection"
 io.on("connection", (socket) => {
-  const clientInfo = {
-    id: socket.id,
-    connectedAt: new Date(),
-    platform: socket.handshake.query.platform || "Unknown",
-    ip: socket.handshake.address,
-  };
+  const deviceId = socket.handshake.auth?.deviceId;
 
-  activeClients.set(socket.id, clientInfo);
-  console.log("Client connected:", clientInfo);
+  if (deviceId) {
+    // Join a stable room named after the device
+    socket.join(`device_${deviceId}`);
+
+    if (!activeClients.has(deviceId)) {
+      activeClients.set(deviceId, new Set());
+    }
+    activeClients.get(deviceId).add(socket.id);
+
+    console.log(`[Socket] Device ${deviceId} connected via socket ${socket.id}`);
+  } else {
+    console.warn(`[Socket] Client connected WITHOUT device id: ${socket.id}`);
+  }
 
   socket.on("disconnect", () => {
-    activeClients.delete(socket.id);
-    console.log("Client disconnected:", socket.id);
+    if (deviceId) {
+      const sockets = activeClients.get(deviceId);
+      if (sockets) {
+        sockets.delete(socket.id);
+        if (sockets.size === 0) activeClients.delete(deviceId);
+      }
+      console.log(`[Socket] Device ${deviceId} disconnected (${socket.id})`);
+    }
   });
 });
 
-// MongoDB Setup
+// ─── MongoDB ─────────────────────────────────────────────────────────────────
 const mongoose = require("mongoose");
 const App = require("./models/App");
 const Device = require("./models/Device");
@@ -63,26 +69,35 @@ const User = require("./models/User");
 const OTP = require("./models/OTP");
 const kavenegarService = require("./utils/kavenegar");
 
-// mongoose.connect(process.env.MONGO_URI || "mongodb://192.168.100.108:27017/push-notification")
-//   .then(() => console.log("MongoDB Connected"))
-//   .catch(err => console.error("MongoDB Connection Error:", err));
+const connectDB = async () => {
+  try {
+    await mongoose.connect(
+      process.env.MONGO_URI ||
+      process.env.MONGODB_URI ||
+      "mongodb://localhost:27017/push-notification"
+    );
+    console.log("[DB] MongoDB connected");
+  } catch (err) {
+    console.error("[DB] Connection error:", err.message);
+    process.exit(1);
+  }
+};
+connectDB();
 
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.error("MongoDB Connection Error:", err));
-
-
-const crypto = require("crypto");
 const generateUUID = () => crypto.randomUUID();
 const generateAPIKey = () => crypto.randomBytes(32).toString("hex");
 
-// --- Middleware ---
+// ─── Middleware ───────────────────────────────────────────────────────────────
 const authMiddleware = async (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Access denied. No token provided." });
+  if (!token)
+    return res.status(401).json({ error: "Access denied. No token provided." });
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "supersecret123");
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "supersecret123"
+    );
     req.user = decoded;
     next();
   } catch (err) {
@@ -90,18 +105,21 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// --- Endpoints ---
-
-// Auth Endpoints
+// ─── Auth Routes ──────────────────────────────────────────────────────────────
 app.post("/auth/send-otp", async (req, res) => {
   const { phone } = req.body;
-  if (!phone) return res.status(400).json({ error: "Phone number is required." });
+  if (!phone)
+    return res.status(400).json({ error: "Phone number is required." });
 
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(Date.now() + 5 * 60000); // 5 minutes
+  const expiresAt = new Date(Date.now() + 5 * 60000);
 
   try {
-    await OTP.findOneAndUpdate({ phone }, { code, expires_at: expiresAt }, { upsert: true });
+    await OTP.findOneAndUpdate(
+      { phone },
+      { code, expires_at: expiresAt },
+      { upsert: true }
+    );
     await kavenegarService.sendOTP(phone, code);
     res.json({ message: "OTP sent successfully." });
   } catch (err) {
@@ -111,13 +129,14 @@ app.post("/auth/send-otp", async (req, res) => {
 
 app.post("/auth/verify-otp", async (req, res) => {
   const { phone, code } = req.body;
-  if (!phone || !code) return res.status(400).json({ error: "Phone and code are required." });
+  if (!phone || !code)
+    return res.status(400).json({ error: "Phone and code are required." });
 
   try {
     const otpDoc = await OTP.findOne({ phone, code });
-    if (!otpDoc) return res.status(400).json({ error: "Invalid or expired OTP." });
+    if (!otpDoc)
+      return res.status(400).json({ error: "Invalid or expired OTP." });
 
-    // Mark OTP as used (delete it)
     await OTP.deleteOne({ _id: otpDoc._id });
 
     let user = await User.findOne({ phone });
@@ -148,275 +167,274 @@ app.get("/auth/me", authMiddleware, async (req, res) => {
   }
 });
 
-// 0. List Apps
+// ─── App Routes ───────────────────────────────────────────────────────────────
 app.get("/apps", authMiddleware, async (req, res) => {
   try {
     const apps = await App.find().sort({ created_at: -1 });
-    // Aggregation to get device counts could be optimized, but for now loop or separate query
-    // Simple way:
-    const appList = await Promise.all(apps.map(async (app) => {
-      const deviceCount = await Device.countDocuments({ app_id: app.app_id });
-      return {
-        id: app.app_id,
-        app_name: app.app_name,
-        package_name: app.package_name,
-        api_key: app.api_key,
-        created_at: app.created_at,
-        device_count: deviceCount
-      };
-    }));
+    const appList = await Promise.all(
+      apps.map(async (a) => {
+        const deviceCount = await Device.countDocuments({ app_id: a.app_id });
+        return {
+          id: a.app_id,
+          app_name: a.app_name,
+          package_name: a.package_name,
+          api_key: a.api_key,
+          created_at: a.created_at,
+          device_count: deviceCount,
+        };
+      })
+    );
     res.json(appList);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 0.1 Status
 app.get("/api/status", async (req, res) => {
   try {
     const history = await Notification.find().sort({ sent_at: -1 }).limit(50);
     res.json({
       status: "online",
-      clients: Array.from(activeClients.values()),
-      history: history
+      online_devices: Array.from(activeClients.keys()),
+      online_count: activeClients.size,
+      history,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 1. Register App
 app.post("/register-app", authMiddleware, async (req, res) => {
   const { app_name, package_name } = req.body;
-
   if (!app_name || !package_name) {
-    return res.status(400).json({ error: "app_name and package_name are required" });
+    return res
+      .status(400)
+      .json({ error: "app_name and package_name are required" });
   }
 
   const app_id = generateUUID();
   const api_key = generateAPIKey();
 
   try {
-    const newApp = new App({
-      app_id,
-      api_key,
-      app_name,
-      package_name
-    });
-
+    const newApp = new App({ app_id, api_key, app_name, package_name });
     await newApp.save();
-
-    console.log(`[Register App] Registered: ${app_name} (${app_id})`);
-
-    res.json({
-      app_id,
-      api_key,
-      status: "registered"
-    });
+    console.log(`[App] Registered: ${app_name} (${app_id})`);
+    res.json({ app_id, api_key, status: "registered" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 2. Register Device
+// ─── Device Routes ────────────────────────────────────────────────────────────
 app.post("/register-device", async (req, res) => {
-  const { app_id, device_id, platform, os_version, app_version, device_model, push_token } = req.body;
+  const { app_id, device_id, platform, os_version, app_version, device_model, push_token } =
+    req.body;
 
   if (!app_id || !device_id) {
     return res.status(400).json({ error: "app_id and device_id are required" });
   }
 
   try {
-    const app = await App.findOne({ app_id });
-    if (!app) {
+    const foundApp = await App.findOne({ app_id });
+    if (!foundApp) {
       return res.status(404).json({ error: "App not found" });
     }
 
     await Device.findOneAndUpdate(
       { app_id, device_id },
-      {
-        platform,
-        os_version,
-        app_version,
-        device_model,
-        push_token,
-        last_seen: new Date()
-      },
+      { platform, os_version, app_version, device_model, push_token, last_seen: new Date() },
       { upsert: true, new: true }
     );
 
-    console.log(`[Register Device] App: ${app_id}, Device: ${device_id}`);
-
-    res.json({
-      status: "device_registered",
-      device_id
-    });
+    console.log(`[Device] Registered: app=${app_id} device=${device_id} fcm=${push_token ? "yes" : "no"}`);
+    res.json({ status: "device_registered", device_id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 3. Send Notification
+// Update FCM token independently (called when token refreshes)
+app.post("/update-fcm-token", async (req, res) => {
+  const { app_id, device_id, push_token } = req.body;
+  if (!app_id || !device_id || !push_token) {
+    return res.status(400).json({ error: "app_id, device_id and push_token required" });
+  }
+  try {
+    await Device.findOneAndUpdate(
+      { app_id, device_id },
+      { push_token, last_seen: new Date() }
+    );
+    res.json({ status: "token_updated" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Send Notification ────────────────────────────────────────────────────────
 app.post("/send-notification", authMiddleware, async (req, res) => {
-  const { app_id, targets, type, value, notification, data, api_key } = req.body;
+  const { app_id, type, value, notification, data } = req.body;
+
+  if (!app_id || !notification?.title || !notification?.body) {
+    return res.status(400).json({ error: "app_id, notification.title and notification.body are required" });
+  }
 
   try {
-    // Authentication
-    const app = await App.findOne({ app_id });
-    if (!app || app.api_key !== api_key) {
-      return res.status(401).json({ error: "Unauthorized: Invalid app_id or api_key" });
-    }
+    const foundApp = await App.findOne({ app_id });
+    if (!foundApp) return res.status(404).json({ error: "App not found" });
 
     let targetDevices = [];
-
-    // Determine Targets
     if (type === "all") {
       targetDevices = await Device.find({ app_id });
     } else if (type === "device") {
       const device = await Device.findOne({ app_id, device_id: value });
-      if (device) {
-        targetDevices = [device];
-      }
-    } else if (type === "tag") {
-      console.warn("Tag targeting not fully implemented yet.");
-      // If we implement tags later, query here.
+      if (device) targetDevices = [device];
     }
 
-    console.log(`[Send Debug] AppID: ${app_id}, DeviceCount: ${targetDevices.length}, Type: ${type}, Value: ${value}`);
+    if (targetDevices.length === 0) {
+      return res.json({ status: "queued", socket_sent: [], fcm_sent: [], pending: [] });
+    }
 
-    const sentTo = [];
-    const payload = {
-      notification,
-      data,
-      sent_at: new Date()
-    };
+    const socketSent = [];
+    const fcmSent = [];
+    const pending = [];
 
-    // Send (Simulation + Socket.io for demo)
-    const promises = targetDevices.map(async (devInfo) => {
+    const payload = { notification, data, sent_at: new Date() };
+
+    for (const devInfo of targetDevices) {
       const devId = devInfo.device_id;
+      const isOnline = activeClients.has(devId);
+      const fcmToken = devInfo.push_token;
 
-      // 1. Emit to socket if connected 
-      // Need to map device_id to socket.id or just broadcast map if we tracked it in memory map.
-      // Since activeClients is still in memory (ephemeral connection), we can't easily map without device sending ID on connect.
-      // For this demo, we can iterate activeClients or just rely on the 'platform' check if we had socket.id stored.
-      // But activeClients is just the socket info. 
-      // If we want real realtime without polling, the client needs to join a room named device_id.
-      // For now, let's keep the original logic of trying to interpret push_token as socket id or web push.
-
-      if (devInfo.push_token) {
-        if (!devInfo.push_token.startsWith('{') && !devInfo.push_token.startsWith('http')) {
-          // Assume socket ID
-          io.to(devInfo.push_token).emit("push-notification", payload);
-        } else {
-          try {
-            if (typeof devInfo.push_token === 'object' || (typeof devInfo.push_token === 'string' && devInfo.push_token.startsWith('{'))) {
-              const sub = typeof devInfo.push_token === 'string' ? JSON.parse(devInfo.push_token) : devInfo.push_token;
-              await webPush.sendNotification(sub, JSON.stringify(payload));
-            }
-          } catch (e) {
-            console.error(`Failed to send web push to ${devId}:`, e.message);
-          }
-        }
+      // 1. Send via Socket.IO if device is online
+      if (isOnline) {
+        io.to(`device_${devId}`).emit("push-notification", payload);
+        socketSent.push(devId);
+        console.log(`[Send] Socket → ${devId}`);
+        // Also send FCM for reliability (ensures delivery even if socket drops mid-send)
+        // Comment out the line below if you want socket-only when online:
+        // continue;
       }
 
-      sentTo.push(devId);
-    });
+      // 2. Send via FCM (background delivery)
+      if (fcmToken) {
+        try {
+          const fcmMessage = {
+            notification: {
+              title: notification.title,
+              body: notification.body,
+            },
+            android: {
+              notification: {
+                channelId: "push_notifications_channel_v3",
+                priority: "high",
+                ...(notification.image ? { imageUrl: notification.image } : {}),
+              },
+              priority: "high",
+            },
+            apns: {
+              payload: {
+                aps: {
+                  alert: { title: notification.title, body: notification.body },
+                  sound: "default",
+                  badge: 1,
+                },
+              },
+            },
+            data: data
+              ? { ...Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])), sent_at: new Date().toISOString() }
+              : { sent_at: new Date().toISOString() },
+            token: fcmToken,
+          };
 
-    await Promise.all(promises);
+          await admin.messaging().send(fcmMessage);
+          fcmSent.push(devId);
+          console.log(`[Send] FCM → ${devId}`);
+        } catch (fcmError) {
+          console.error(`[Send] FCM failed for ${devId}:`, fcmError.message);
 
-    // Save History
-    const newNotification = new Notification({
+          // Invalid token → clean up
+          if (
+            fcmError.code === "messaging/registration-token-not-registered" ||
+            fcmError.code === "messaging/invalid-registration-token"
+          ) {
+            await Device.updateOne({ device_id: devId }, { $unset: { push_token: 1 } });
+          } else if (!isOnline) {
+            // Save as pending only if not delivered via socket either
+            await Notification.create({
+              app_id,
+              notification,
+              data,
+              device_id: devId,
+              targets_count: 1,
+              status: "pending",
+              sent_at: new Date(),
+            });
+            pending.push(devId);
+          }
+        }
+      } else if (!isOnline) {
+        // 3. No socket, no FCM → save as pending for next app open
+        await Notification.create({
+          app_id,
+          notification,
+          data,
+          device_id: devId,
+          targets_count: 1,
+          status: "pending",
+          sent_at: new Date(),
+        });
+        pending.push(devId);
+        console.log(`[Send] Pending → ${devId}`);
+      }
+    }
+
+    // Save history record
+    await Notification.create({
       app_id,
       notification,
       data,
-      targets_count: sentTo.length,
+      targets_count: targetDevices.length,
       status: "sent",
-      sent_at: new Date()
+      sent_at: new Date(),
     });
-    await newNotification.save();
-
-    console.log(`[Send Notification] Sent to ${sentTo.length} devices for App: ${app.app_name}`);
 
     res.json({
-      status: "sent",
-      sent_to: sentTo
+      status: "queued",
+      socket_sent: socketSent,
+      fcm_sent: fcmSent,
+      pending,
+      total: targetDevices.length,
     });
   } catch (err) {
+    console.error("[Send] Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// 4. Trigger New Product (Demo)
-app.get("/api/trigger-product", async (req, res) => {
-  const APP_ID = "4bb8012a-4372-453f-893a-9d622408aea3"; // Shopping App
-  const API_KEY = "bfe9f2ac91a7f0128aeaf68baf1c34d92c4c9d1c69c715d7aaa0db1e11024416";
-
-  const { product_name } = req.query;
-  const name = product_name || "Amazing New Product";
-
-  console.log("Triggering New Product Notification for:", name);
-
+// ─── Pending Notifications ────────────────────────────────────────────────────
+app.get("/pending-notifications/:device_id", async (req, res) => {
+  const { device_id } = req.params;
   try {
-    // Reuse the send-notification logic by making an internal call or just copying logic.
-    // Copying logic for simplicity and speed.
+    const pending = await Notification.find({
+      device_id,
+      status: "pending",
+    }).sort({ sent_at: 1 });
 
-    const targetDevices = await Device.find({ app_id: APP_ID });
+    res.json(pending);
 
-    if (targetDevices.length === 0) {
-      return res.json({ status: "no_devices", message: "No devices registered for shopping app yet." });
+    // Mark as delivered
+    if (pending.length > 0) {
+      await Notification.updateMany(
+        { device_id, status: "pending" },
+        { $set: { status: "delivered" } }
+      );
+      console.log(`[Pending] Delivered ${pending.length} pending notifications to ${device_id}`);
     }
-
-    const payload = {
-      notification: {
-        title: "New Product Available!",
-        body: `Check out our new ${name}. It's in stock now.`
-      },
-      data: { type: "new_product", product_id: "12345" },
-      sent_at: new Date()
-    };
-
-    const sentTo = [];
-    const promises = targetDevices.map(async (devInfo) => {
-      if (devInfo.push_token) {
-        if (!devInfo.push_token.startsWith('{') && !devInfo.push_token.startsWith('http')) {
-          io.to(devInfo.push_token).emit("push-notification", payload);
-        } else {
-          try {
-            if (typeof devInfo.push_token === 'object' || (typeof devInfo.push_token === 'string' && devInfo.push_token.startsWith('{'))) {
-              const sub = typeof devInfo.push_token === 'string' ? JSON.parse(devInfo.push_token) : devInfo.push_token;
-              await webPush.sendNotification(sub, JSON.stringify(payload));
-            }
-          } catch (e) {
-            console.error(`Failed to send web push to ${devInfo.device_id}:`, e.message);
-          }
-        }
-      }
-      sentTo.push(devInfo.device_id);
-    });
-
-    await Promise.all(promises);
-
-    // Save History
-    const newNotification = new Notification({
-      app_id: APP_ID,
-      notification: payload.notification,
-      data: payload.data,
-      targets_count: sentTo.length,
-      status: "sent",
-      sent_at: new Date()
-    });
-    await newNotification.save();
-
-    res.json({
-      status: "success",
-      message: `Notification sent to ${sentTo.length} devices`,
-      product: name
-    });
-
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
+// ─── Start Server ─────────────────────────────────────────────────────────────
 const port = process.env.PORT || 5001;
-server.listen(port, () => console.log(`Server started on port ${port}`));
+server.listen(port, () => console.log(`[Server] Running on port ${port}`));

@@ -1,14 +1,20 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:godeye_push_notification/godeye_push_notification.dart';
 
 void main() async {
-  print("DEBUG: [Main] UI Isolate starting...");
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
 
-  final pushService = PushNotificationService();
-  await pushService.initialize(
-    serverUrl: "http://10.0.2.2:5001",
-    appId: "4bb8012a-4372-453f-893a-9d622408aea3",
+  // MUST be registered before runApp — handles FCM when app is terminated
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+  await PushNotificationService().initialize(
+    serverUrl: "http://10.135.86.214:5001",
+    appId: "05bfb8b7-5b98-4497-b0e6-ce4d40bce041",
+    deviceModel: "Flutter Demo",
+    appVersion: "1.0.0",
   );
 
   runApp(const MyApp());
@@ -42,7 +48,6 @@ class _ShoppingHomePageState extends State<ShoppingHomePage> {
 
   String _status = "Initializing...";
   String? _socketId;
-  bool _registered = false;
 
   @override
   void initState() {
@@ -51,42 +56,26 @@ class _ShoppingHomePageState extends State<ShoppingHomePage> {
   }
 
   void _setupConnection() {
+    // گوش دادن به تغییرات socketId (وقتی سرویس پس‌زمینه متصل شد)
     _pushService.onSocketId.listen((socketId) {
       if (socketId != null && socketId != _socketId) {
         setState(() {
           _socketId = socketId;
-          _status = "Connected. Registering...";
+          _status = "Connected and registered!";
         });
-        _registerDevice();
+
+        // می‌توانید یک پیام کوتاه نمایش دهید
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Push service ready'),
+            duration: Duration(seconds: 1),
+          ),
+        );
       }
     });
 
+    // درخواست socketId فعلی (اگر از قبل متصل باشد)
     _pushService.requestSocketId();
-  }
-
-  Future<void> _registerDevice() async {
-    if (_registered || _socketId == null) return;
-
-    final success = await _pushService.registerDevice(
-      socketId: _socketId!,
-      deviceId: "phone_${DateTime.now().millisecondsSinceEpoch}",
-      deviceModel: "Flutter Demo",
-    );
-
-    if (success) {
-      if (!mounted) return;
-      setState(() {
-        _registered = true;
-        _status = "Ready for Deals!";
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Device Registered for Push Notification!'),
-        ),
-      );
-    } else {
-      setState(() => _status = "Registration Failed");
-    }
   }
 
   void _addToCart(String productName) {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1039817329670",
+    "project_id": "fcm-push-d704c",
+    "storage_bucket": "fcm-push-d704c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1039817329670:android:7d762c37f88e558b564787",
+        "android_client_info": {
+          "package_name": "tets.push"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5CreGiuq4Vt5l_l7g67hoa2SOBgcR9qI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

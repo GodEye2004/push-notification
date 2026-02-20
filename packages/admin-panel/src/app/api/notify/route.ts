@@ -29,6 +29,7 @@ export async function POST(req: Request) {
     let fcmResponse = null;
     // TODO: Fix this issue
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const message: any = {
         notification: {
           title,
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
       fcmMessageId: fcmResponse,
       nodeForwarded: true,
     });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error("General Error:", error);
     return NextResponse.json(

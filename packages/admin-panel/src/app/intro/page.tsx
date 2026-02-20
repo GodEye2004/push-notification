@@ -22,6 +22,7 @@ export default function IntroPage() {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true);
     }, []);
 
@@ -41,6 +42,7 @@ export default function IntroPage() {
             transition: {
                 duration: 0.8,
                 ease: "easeOut"
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any
         },
     };
