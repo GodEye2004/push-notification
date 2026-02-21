@@ -1,6 +1,6 @@
 "use strict";
 
-import { admin } from "@/lib/firebase";
+// import { admin } from "@/lib/firebase";
 import { NextResponse } from "next/server";
 import { SERVER_API_URL } from "@/lib/config";
 
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     }
 
     // 2. Send via FCM (if target is specified)
-    let fcmResponse = null;
+    // let fcmResponse = null;
     // TODO: Fix this issue
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       }
 
       if (message.topic || message.token) {
-        fcmResponse = await admin.messaging().send(message);
+        // fcmResponse = await admin.messaging().send(message);
       }
     } catch (fcmError) {
       console.warn("FCM delivery skipped or failed:", fcmError);
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      fcmMessageId: fcmResponse,
+      // fcmMessageId: fcmResponse,
       nodeForwarded: true,
     });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
