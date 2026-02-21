@@ -3,6 +3,8 @@ services:
     build: ./packages/server
     ports:
       - "3000:3000"
+    env_file:
+      - ./packages/server/.env
     environment:
       - PORT=3000
       - MONGO_URI=mongodb://172.17.0.1:27017/fcm-push
