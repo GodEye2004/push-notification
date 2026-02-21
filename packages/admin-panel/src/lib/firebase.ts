@@ -1,16 +1,15 @@
-import * as admin from 'firebase-admin';
+// import serviceAccount from '../../../service-account-key.json';
 
-if (!admin.apps.length) {
-    try {
-        // Attempt to load from service-account-key.json in project root
-        // In production, use environment variables!
-        const serviceAccount = require('../../../service-account-key.json');
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-        });
-    } catch (error) {
-        console.error('Firebase Admin Init Error:', error);
-    }
-}
+// import * as admin from 'firebase-admin';
 
-export { admin };
+// if (!admin.apps.length) {
+//   try {
+//     admin.initializeApp({
+//       credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+//     });
+//   } catch (error) {
+//     console.error('Firebase Admin Init Error:', error);
+//   }
+// }
+
+// export { admin };

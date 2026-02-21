@@ -254,7 +254,7 @@ packages:
       path: "../godeye_push_notification"
       relative: true
     source: path
-    version: "1.0.0"
+    version: "2.0.0"
   http:
     dependency: "direct main"
     description:

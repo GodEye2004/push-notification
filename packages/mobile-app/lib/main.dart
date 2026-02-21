@@ -11,7 +11,7 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   await PushNotificationService().initialize(
-    serverUrl: "http://10.135.86.214:5001",
+    serverUrl: "http://192.168.100.63:5001",
     appId: "05bfb8b7-5b98-4497-b0e6-ce4d40bce041",
     deviceModel: "Flutter Demo",
     appVersion: "1.0.0",
