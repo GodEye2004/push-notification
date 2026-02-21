@@ -16,11 +16,75 @@ const io = new Server(server, {
 
 // ─── Firebase Admin ───────────────────────────────────────────────────────────
 const admin = require("firebase-admin");
-const serviceAccount = require("../config/service-account-key.json");
+// const serviceAccount = require("../config/service-account-key.json");
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccount),
+// });
+
+// Clean the private key / service account more thoroughly
+// Support either a full JSON service account in FIREBASE_SERVICE_ACCOUNT
+// or individual env vars including FIREBASE_PRIVATE_KEY which may contain escaped newlines.
+let credentialObj = null;
+
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // If a JSON string is provided (possibly with escaped newlines), try to parse it.
+  try {
+    credentialObj = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } catch (jsonErr) {
+    // Try to fix common issues (escaped newlines, surrounding quotes) and parse again
+    try {
+      const fixed = process.env.FIREBASE_SERVICE_ACCOUNT
+        .replace(/\\r?\\n/g, "\n")
+        .replace(/\r/g, "")
+        .replace(/^['"]|['"]$/g, "")
+        .trim();
+      credentialObj = JSON.parse(fixed);
+    } catch (e) {
+      console.error("[Firebase] Failed to parse FIREBASE_SERVICE_ACCOUNT:", e.message);
+    }
+  }
+} else {
+  // Build credential object from individual env vars
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  if (privateKey) {
+    // Remove surrounding quotes (single or double), convert escaped newlines to real newlines,
+    // and strip stray carriage returns.
+    privateKey = privateKey.replace(/\\r?\\n/g, "\n").replace(/\r/g, "").replace(/^['"]|['"]$/g, "").trim();
+  }
+
+  credentialObj = {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: privateKey,
+  };
+}
+
+// Basic validation and initialization
+if (!credentialObj || !credentialObj.clientEmail || !credentialObj.privateKey) {
+  console.error("[Firebase] Missing or invalid service account credentials. Ensure FIREBASE_SERVICE_ACCOUNT or FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY are set correctly.");
+} else if (!admin.apps.length) {
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(credentialObj),
+    });
+  } catch (initErr) {
+    console.error("[Firebase] initializeApp failed:", initErr.message);
+  }
+}
+
+console.log(
+  "Key starts with:",
+  process.env.FIREBASE_PRIVATE_KEY?.substring(0, 30),
+);
+console.log(
+  "Key contains newline characters:",
+  process.env.FIREBASE_PRIVATE_KEY?.includes("\n"),
+);
+console.log(
+  "Key contains literal slash-n:",
+  process.env.FIREBASE_PRIVATE_KEY?.includes("\\n"),
+);
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -43,7 +107,9 @@ io.on("connection", (socket) => {
     }
     activeClients.get(deviceId).add(socket.id);
 
-    console.log(`[Socket] Device ${deviceId} connected via socket ${socket.id}`);
+    console.log(
+      `[Socket] Device ${deviceId} connected via socket ${socket.id}`,
+    );
   } else {
     console.warn(`[Socket] Client connected WITHOUT device id: ${socket.id}`);
   }
@@ -73,8 +139,8 @@ const connectDB = async () => {
   try {
     await mongoose.connect(
       process.env.MONGO_URI ||
-      process.env.MONGODB_URI ||
-      "mongodb://localhost:27017/push-notification"
+        process.env.MONGODB_URI ||
+        "mongodb://localhost:27017/push-notification",
     );
     console.log("[DB] MongoDB connected");
   } catch (err) {
@@ -96,7 +162,7 @@ const authMiddleware = async (req, res, next) => {
   try {
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || "supersecret123"
+      process.env.JWT_SECRET || "supersecret123",
     );
     req.user = decoded;
     next();
@@ -118,7 +184,7 @@ app.post("/auth/send-otp", async (req, res) => {
     await OTP.findOneAndUpdate(
       { phone },
       { code, expires_at: expiresAt },
-      { upsert: true }
+      { upsert: true },
     );
     await kavenegarService.sendOTP(phone, code);
     res.json({ message: "OTP sent successfully." });
@@ -148,7 +214,7 @@ app.post("/auth/verify-otp", async (req, res) => {
     const token = jwt.sign(
       { id: user._id, phone: user.phone, role: user.role },
       process.env.JWT_SECRET || "supersecret123",
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     res.json({ token, user: { phone: user.phone, role: user.role } });
@@ -182,7 +248,7 @@ app.get("/apps", authMiddleware, async (req, res) => {
           created_at: a.created_at,
           device_count: deviceCount,
         };
-      })
+      }),
     );
     res.json(appList);
   } catch (err) {
@@ -227,8 +293,15 @@ app.post("/register-app", authMiddleware, async (req, res) => {
 
 // ─── Device Routes ────────────────────────────────────────────────────────────
 app.post("/register-device", async (req, res) => {
-  const { app_id, device_id, platform, os_version, app_version, device_model, push_token } =
-    req.body;
+  const {
+    app_id,
+    device_id,
+    platform,
+    os_version,
+    app_version,
+    device_model,
+    push_token,
+  } = req.body;
 
   if (!app_id || !device_id) {
     return res.status(400).json({ error: "app_id and device_id are required" });
@@ -242,11 +315,20 @@ app.post("/register-device", async (req, res) => {
 
     await Device.findOneAndUpdate(
       { app_id, device_id },
-      { platform, os_version, app_version, device_model, push_token, last_seen: new Date() },
-      { upsert: true, new: true }
+      {
+        platform,
+        os_version,
+        app_version,
+        device_model,
+        push_token,
+        last_seen: new Date(),
+      },
+      { upsert: true, new: true },
     );
 
-    console.log(`[Device] Registered: app=${app_id} device=${device_id} fcm=${push_token ? "yes" : "no"}`);
+    console.log(
+      `[Device] Registered: app=${app_id} device=${device_id} fcm=${push_token ? "yes" : "no"}`,
+    );
     res.json({ status: "device_registered", device_id });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -257,12 +339,14 @@ app.post("/register-device", async (req, res) => {
 app.post("/update-fcm-token", async (req, res) => {
   const { app_id, device_id, push_token } = req.body;
   if (!app_id || !device_id || !push_token) {
-    return res.status(400).json({ error: "app_id, device_id and push_token required" });
+    return res
+      .status(400)
+      .json({ error: "app_id, device_id and push_token required" });
   }
   try {
     await Device.findOneAndUpdate(
       { app_id, device_id },
-      { push_token, last_seen: new Date() }
+      { push_token, last_seen: new Date() },
     );
     res.json({ status: "token_updated" });
   } catch (err) {
@@ -275,7 +359,9 @@ app.post("/send-notification", authMiddleware, async (req, res) => {
   const { app_id, type, value, notification, data } = req.body;
 
   if (!app_id || !notification?.title || !notification?.body) {
-    return res.status(400).json({ error: "app_id, notification.title and notification.body are required" });
+    return res.status(400).json({
+      error: "app_id, notification.title and notification.body are required",
+    });
   }
 
   try {
@@ -291,7 +377,12 @@ app.post("/send-notification", authMiddleware, async (req, res) => {
     }
 
     if (targetDevices.length === 0) {
-      return res.json({ status: "queued", socket_sent: [], fcm_sent: [], pending: [] });
+      return res.json({
+        status: "queued",
+        socket_sent: [],
+        fcm_sent: [],
+        pending: [],
+      });
     }
 
     const socketSent = [];
@@ -341,7 +432,12 @@ app.post("/send-notification", authMiddleware, async (req, res) => {
               },
             },
             data: data
-              ? { ...Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])), sent_at: new Date().toISOString() }
+              ? {
+                  ...Object.fromEntries(
+                    Object.entries(data).map(([k, v]) => [k, String(v)]),
+                  ),
+                  sent_at: new Date().toISOString(),
+                }
               : { sent_at: new Date().toISOString() },
             token: fcmToken,
           };
@@ -357,7 +453,10 @@ app.post("/send-notification", authMiddleware, async (req, res) => {
             fcmError.code === "messaging/registration-token-not-registered" ||
             fcmError.code === "messaging/invalid-registration-token"
           ) {
-            await Device.updateOne({ device_id: devId }, { $unset: { push_token: 1 } });
+            await Device.updateOne(
+              { device_id: devId },
+              { $unset: { push_token: 1 } },
+            );
           } else if (!isOnline) {
             // Save as pending only if not delivered via socket either
             await Notification.create({
@@ -426,9 +525,11 @@ app.get("/pending-notifications/:device_id", async (req, res) => {
     if (pending.length > 0) {
       await Notification.updateMany(
         { device_id, status: "pending" },
-        { $set: { status: "delivered" } }
+        { $set: { status: "delivered" } },
       );
-      console.log(`[Pending] Delivered ${pending.length} pending notifications to ${device_id}`);
+      console.log(
+        `[Pending] Delivered ${pending.length} pending notifications to ${device_id}`,
+      );
     }
   } catch (e) {
     res.status(500).json({ error: e.message });

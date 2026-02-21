@@ -3,6 +3,9 @@ node_modules/
 npm-debug.log
 .env
 service-account-key.json
+# ignore service account keys anywhere in the repo and the specific path that was committed
+**/service-account-key.json
+packages/server/config/service-account-key.json
 
 # Next.js
 .next/
