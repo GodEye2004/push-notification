@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { Bell, Smartphone, Send, AppWindow, Activity } from "lucide-react";
@@ -8,10 +9,34 @@ import { API_URL } from "@/lib/config";
 
 export default function Home() {
   const [stats, setStats] = useState([
-    { name: "تعداد برنامه‌ها", value: "0", icon: AppWindow, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { name: "سوکت‌های فعال", value: "0", icon: Smartphone, color: "text-green-500", bg: "bg-green-500/10" },
-    { name: "ارسال شده (تاریخچه)", value: "0", icon: Send, color: "text-purple-500", bg: "bg-purple-500/10" },
-    { name: "وضعیت سرور", value: "آفلاین", icon: Activity, color: "text-orange-500", bg: "bg-orange-500/10" },
+    {
+      name: "تعداد برنامه‌ها",
+      value: "0",
+      icon: AppWindow,
+      color: "text-blue-500",
+      bg: "bg-blue-500/10",
+    },
+    {
+      name: "سوکت‌های فعال",
+      value: "0",
+      icon: Smartphone,
+      color: "text-green-500",
+      bg: "bg-green-500/10",
+    },
+    {
+      name: "ارسال شده (تاریخچه)",
+      value: "0",
+      icon: Send,
+      color: "text-purple-500",
+      bg: "bg-purple-500/10",
+    },
+    {
+      name: "وضعیت سرور",
+      value: "آفلاین",
+      icon: Activity,
+      color: "text-orange-500",
+      bg: "bg-orange-500/10",
+    },
   ]);
   type HistoryItem = {
     _id?: string;
@@ -34,14 +59,21 @@ export default function Home() {
       // Fetch status and apps in parallel. server `/api/status` returns:
       // { status, online_devices, online_count, history }
       const [statusRes, appsRes] = await Promise.all([
-        fetch(`${API_URL}/api/status`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/apps`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null),
+        fetch(`${API_URL}/api/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/apps`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => null),
       ]);
 
-      if (!statusRes || !statusRes.ok) throw new Error(`status ${statusRes && statusRes.status}`);
+      if (!statusRes || !statusRes.ok)
+        throw new Error(`status ${statusRes && statusRes.status}`);
       const statusData = await statusRes.json();
 
-      const clients = Array.isArray(statusData.online_devices) ? statusData.online_devices : [];
+      const clients = Array.isArray(statusData.online_devices)
+        ? statusData.online_devices
+        : [];
       const hist = Array.isArray(statusData.history) ? statusData.history : [];
 
       // apps count: prefer /apps response when available
@@ -60,25 +92,67 @@ export default function Home() {
       } else if (clients.length > 0) {
         // infer unique apps from clients if possible
         const appKeys = clients
-            .map((c: unknown) => {
-              if (c && typeof c === "object") {
-                const co = c as Record<string, unknown>;
-                return (co.appId ?? co.app ?? co.app_name ?? co.appKey) as string | null;
-              }
-              return null;
-            })
-            .filter(Boolean) as string[];
+          .map((c: unknown) => {
+            if (c && typeof c === "object") {
+              const co = c as Record<string, unknown>;
+              return (co.appId ?? co.app ?? co.app_name ?? co.appKey) as
+                | string
+                | null;
+            }
+            return null;
+          })
+          .filter(Boolean) as string[];
         appsCount = new Set(appKeys).size || 0;
       }
 
       setStats([
-        { name: "تعداد برنامه‌ها", value: (appsCount ?? 0).toString(), icon: AppWindow, color: "text-blue-500", bg: "bg-blue-500/10" },
-        { name: "سوکت‌های فعال", value: (Array.isArray(clients) ? clients.length : (typeof statusData.online_count === 'number' ? statusData.online_count : 0)).toString(), icon: Smartphone, color: "text-green-500", bg: "bg-green-500/10" },
-        { name: "ارسال شده (تاریخچه)", value: (hist ? hist.length : 0).toString(), icon: Send, color: "text-purple-500", bg: "bg-purple-500/10" },
-        { name: "وضعیت سرور", value: statusData.status === "online" ? "آنلاین" : "آفلاین", icon: Activity, color: statusData.status === "online" ? "text-green-500" : "text-orange-500", bg: statusData.status === "online" ? "bg-green-500/20" : "bg-orange-500/10" },
+        {
+          name: "تعداد برنامه‌ها",
+          value: (appsCount ?? 0).toString(),
+          icon: AppWindow,
+          color: "text-blue-500",
+          bg: "bg-blue-500/10",
+        },
+        {
+          name: "سوکت‌های فعال",
+          value: (Array.isArray(clients)
+            ? clients.length
+            : typeof statusData.online_count === "number"
+              ? statusData.online_count
+              : 0
+          ).toString(),
+          icon: Smartphone,
+          color: "text-green-500",
+          bg: "bg-green-500/10",
+        },
+        {
+          name: "ارسال شده (تاریخچه)",
+          value: (hist ? hist.length : 0).toString(),
+          icon: Send,
+          color: "text-purple-500",
+          bg: "bg-purple-500/10",
+        },
+        {
+          name: "وضعیت سرور",
+          value: statusData.status === "online" ? "آنلاین" : "آفلاین",
+          icon: Activity,
+          color:
+            statusData.status === "online"
+              ? "text-green-500"
+              : "text-orange-500",
+          bg:
+            statusData.status === "online"
+              ? "bg-green-500/20"
+              : "bg-orange-500/10",
+        },
       ]);
 
-  setHistory((hist as unknown[]).map((h) => ({ ...h as Record<string, any>, id: (h as any)._id ?? (h as any).id })));
+      setHistory(
+        (hist as unknown[]).map((h) => ({
+          ...(h as Record<string, any>),
+          id: (h as any)._id ?? (h as any).id,
+        })),
+      );
     } catch (err) {
       console.error("Failed to fetch stats:", err);
     }
@@ -112,7 +186,10 @@ export default function Home() {
         return;
       }
       // fallback: call API then reload
-      fetch(`${API_URL}/api/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }).finally(() => {
+      fetch(`${API_URL}/api/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }).finally(() => {
         window.location.href = "/login";
       });
     } catch (_) {
@@ -124,11 +201,20 @@ export default function Home() {
     <div className="space-y-8">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">نمای کلی پیشخوان</h1>
-          <p className="text-muted-foreground">خوش آمدید، در اینجا وضعیت اعلان‌های شما نمایش داده می‌شود.</p>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            نمای کلی پیشخوان
+          </h1>
+          <p className="text-muted-foreground">
+            خوش آمدید، در اینجا وضعیت اعلان‌های شما نمایش داده می‌شود.
+          </p>
         </div>
         <div>
-          <button onClick={handleLogout} className="px-3 py-2 bg-red-600 text-white rounded-lg hover:opacity-90 transition">خروج</button>
+          <button
+            onClick={handleLogout}
+            className="px-3 py-2 bg-red-600 text-white rounded-lg hover:opacity-90 transition"
+          >
+            خروج
+          </button>
         </div>
       </div>
 
@@ -145,8 +231,12 @@ export default function Home() {
               <stat.icon className={`w-6 h-6 ${stat.color}`} />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground font-medium">{stat.name}</p>
-              <h3 className="text-2xl font-bold text-white tracking-tight">{stat.value}</h3>
+              <p className="text-sm text-muted-foreground font-medium">
+                {stat.name}
+              </p>
+              <h3 className="text-2xl font-bold text-white tracking-tight">
+                {stat.value}
+              </h3>
             </div>
           </motion.div>
         ))}
@@ -156,13 +246,23 @@ export default function Home() {
         <div className="glass-card p-8 rounded-2xl space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-white">فعالیت‌های اخیر</h2>
-            <button onClick={fetchStats} className="text-sm text-primary hover:underline">بازیابی</button>
+            <button
+              onClick={fetchStats}
+              className="text-sm text-primary hover:underline"
+            >
+              بازیابی
+            </button>
           </div>
 
           <div className="space-y-4">
             <AnimatePresence initial={false}>
               {history.length === 0 && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-sm text-muted-foreground">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-sm text-muted-foreground"
+                >
                   هیچ فعالیتی ثبت نشده است.
                 </motion.div>
               )}
@@ -179,16 +279,55 @@ export default function Home() {
                 >
                   <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-white">{String(item.title ?? (item.notification && (item.notification as any).title) ?? "بدون عنوان")}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {String(item.deviceName ?? item.device ?? "دستگاه نامشخص")} • {item.timestamp ? new Date(String(item.timestamp)).toLocaleString() : (item.time ? new Date(String(item.time)).toLocaleString() : "نامشخص")}
+                    <p className="text-sm font-medium text-white">
+                      {String(
+                        item.title ??
+                          (item.notification &&
+                            (item.notification as any).title) ??
+                          "بدون عنوان",
+                      )}
                     </p>
-                    { (item.body ?? (item.notification && (item.notification as any).body)) && <p className="text-xs text-muted-foreground mt-2">{String(item.body ?? (item.notification && (item.notification as any).body))}</p> }
+                    <p className="text-xs text-muted-foreground">
+                      {String(
+                        item.deviceName ?? item.device ?? "دستگاه نامشخص",
+                      )}{" "}
+                      •{" "}
+                      {item.timestamp
+                        ? new Date(String(item.timestamp)).toLocaleString()
+                        : item.time
+                          ? new Date(String(item.time)).toLocaleString()
+                          : "نامشخص"}
+                    </p>
+                    {(item.body ??
+                      (item.notification &&
+                        (item.notification as any).body)) && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {String(
+                          item.body ??
+                            (item.notification &&
+                              (item.notification as any).body),
+                        )}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <button onClick={() => navigator.clipboard?.writeText(JSON.stringify(item))} title="کپی" className="px-3 py-1 bg-white/5 rounded-md text-sm hover:opacity-90 transition">کپی</button>
-                    <button onClick={() => handleDelete(item.id)} title="حذف" className="px-3 py-1 bg-red-700 rounded-md text-sm text-white hover:opacity-90 transition">حذف</button>
+                    <button
+                      onClick={() =>
+                        navigator.clipboard?.writeText(JSON.stringify(item))
+                      }
+                      title="کپی"
+                      className="px-3 py-1 bg-white/5 rounded-md text-sm hover:opacity-90 transition"
+                    >
+                      کپی
+                    </button>
+                    <button
+                      onClick={() => item.id && handleDelete(item.id)}
+                      title="حذف"
+                      className="px-3 py-1 bg-red-700 rounded-md text-sm text-white hover:opacity-90 transition"
+                    >
+                      حذف
+                    </button>
                   </div>
                 </motion.div>
               ))}
@@ -200,9 +339,12 @@ export default function Home() {
           <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mb-2">
             <Send className="w-8 h-8 text-primary" />
           </div>
-          <h2 className="text-xl font-bold text-white">آماده ارسال اعلان هستید؟</h2>
+          <h2 className="text-xl font-bold text-white">
+            آماده ارسال اعلان هستید؟
+          </h2>
           <p className="text-muted-foreground max-w-xs mx-auto text-sm">
-            به سادگی اعلان‌های هدفمند را به هر یک از برنامه‌های ثبت شده خود ارسال کنید.
+            به سادگی اعلان‌های هدفمند را به هر یک از برنامه‌های ثبت شده خود
+            ارسال کنید.
           </p>
           <a
             href="/send"
