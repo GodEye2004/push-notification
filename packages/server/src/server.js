@@ -3,10 +3,14 @@ const http = require("http");
 const { Server } = require("socket.io");
 const bodyParser = require("body-parser");
 const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, "../.env") });
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const mongoose = require("mongoose");
+const admin = require("firebase-admin");
+
+// Load environment variables from the correct path
+require("dotenv").config({ path: path.join(__dirname, "../.env") });
 
 const app = express();
 const server = http.createServer(app);
@@ -14,33 +18,41 @@ const io = new Server(server, {
   cors: { origin: "*" },
 });
 
-require('dotenv').config();
-// ─── Firebase Admin ───────────────────────────────────────────────────────────
-const admin = require("firebase-admin");
-
-// Initialize Firebase Admin SDK directly
+// ─── Firebase Admin SDK ─────────────────────────────────────────────────────
 try {
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
   if (!privateKey) {
-    throw new Error("FIREBASE_PRIVATE_KEY is missing from environment variables.");
+    throw new Error(
+      "FIREBASE_PRIVATE_KEY is missing from environment variables.",
+    );
   }
+  // If the key contains literal backslash-n (from a single-line .env), convert them to real newlines
+  privateKey = privateKey.replace(/\\n/g, "\n");
 
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: privateKey, // Use the fixed key here
+      privateKey: privateKey,
     }),
   });
 
-  console.log('[Firebase] Admin SDK initialized correctly using environment variables.');
+  console.log(
+    "[Firebase] Admin SDK initialized correctly using environment variables.",
+  );
 } catch (error) {
-  // This will help you see if the key is still "undefined" or malformed
-  console.error('[Firebase] initializeApp failed:', error.message);
+  console.error("[Firebase] initializeApp failed:", error.message);
   if (process.env.FIREBASE_PRIVATE_KEY) {
-    console.log('Key starts with:', process.env.FIREBASE_PRIVATE_KEY.substring(0, 20));
+    console.log(
+      "Key starts with:",
+      process.env.FIREBASE_PRIVATE_KEY.substring(0, 20),
+    );
   }
+  // Depending on your deployment strategy, you might want to exit here
+  // process.exit(1);
 }
 
+// ─── Debug: log key info (optional, remove in production) ─────────────────
 console.log(
   "Key starts with:",
   process.env.FIREBASE_PRIVATE_KEY?.substring(0, 30),
@@ -57,12 +69,11 @@ console.log(
 app.use(cors());
 app.use(bodyParser.json());
 
-// ─── In-memory state ──────────────────────────────────────────────────────────
+// ─── In-memory state ────────────────────────────────────────────────────────
 // deviceId → Set of socketIds (a device can have multiple tabs/connections)
 const activeClients = new Map();
 
-// ─── Socket.IO ────────────────────────────────────────────────────────────────
-// FIX: was "connecting" (invalid event) → must be "connection"
+// ─── Socket.IO ──────────────────────────────────────────────────────────────
 io.on("connection", (socket) => {
   const deviceId = socket.handshake.auth?.deviceId;
 
@@ -94,8 +105,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// ─── MongoDB ─────────────────────────────────────────────────────────────────
-const mongoose = require("mongoose");
+// ─── MongoDB Models ────────────────────────────────────────────────────────
 const App = require("./models/App");
 const Device = require("./models/Device");
 const Notification = require("./models/Notification");
@@ -107,8 +117,8 @@ const connectDB = async () => {
   try {
     await mongoose.connect(
       process.env.MONGO_URI ||
-      process.env.MONGODB_URI ||
-      "mongodb://localhost:27017/push-notification",
+        process.env.MONGODB_URI ||
+        "mongodb://localhost:27017/push-notification",
     );
     console.log("[DB] MongoDB connected");
   } catch (err) {
@@ -121,7 +131,7 @@ connectDB();
 const generateUUID = () => crypto.randomUUID();
 const generateAPIKey = () => crypto.randomBytes(32).toString("hex");
 
-// ─── Middleware ───────────────────────────────────────────────────────────────
+// ─── Middleware ─────────────────────────────────────────────────────────────
 const authMiddleware = async (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token)
@@ -139,7 +149,7 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// ─── Auth Routes ──────────────────────────────────────────────────────────────
+// ─── Auth Routes ────────────────────────────────────────────────────────────
 app.post("/auth/send-otp", async (req, res) => {
   const { phone } = req.body;
   if (!phone)
@@ -201,7 +211,7 @@ app.get("/auth/me", authMiddleware, async (req, res) => {
   }
 });
 
-// ─── App Routes ───────────────────────────────────────────────────────────────
+// ─── App Routes ─────────────────────────────────────────────────────────────
 app.get("/apps", authMiddleware, async (req, res) => {
   try {
     const apps = await App.find().sort({ created_at: -1 });
@@ -259,7 +269,7 @@ app.post("/register-app", authMiddleware, async (req, res) => {
   }
 });
 
-// ─── Device Routes ────────────────────────────────────────────────────────────
+// ─── Device Routes ──────────────────────────────────────────────────────────
 app.post("/register-device", async (req, res) => {
   const {
     app_id,
@@ -322,7 +332,7 @@ app.post("/update-fcm-token", async (req, res) => {
   }
 });
 
-// ─── Send Notification ────────────────────────────────────────────────────────
+// ─── Send Notification ──────────────────────────────────────────────────────
 app.post("/send-notification", authMiddleware, async (req, res) => {
   const { app_id, type, value, notification, data } = req.body;
 
@@ -401,11 +411,11 @@ app.post("/send-notification", authMiddleware, async (req, res) => {
             },
             data: data
               ? {
-                ...Object.fromEntries(
-                  Object.entries(data).map(([k, v]) => [k, String(v)]),
-                ),
-                sent_at: new Date().toISOString(),
-              }
+                  ...Object.fromEntries(
+                    Object.entries(data).map(([k, v]) => [k, String(v)]),
+                  ),
+                  sent_at: new Date().toISOString(),
+                }
               : { sent_at: new Date().toISOString() },
             token: fcmToken,
           };
@@ -478,7 +488,7 @@ app.post("/send-notification", authMiddleware, async (req, res) => {
   }
 });
 
-// ─── Pending Notifications ────────────────────────────────────────────────────
+// ─── Pending Notifications ──────────────────────────────────────────────────
 app.get("/pending-notifications/:device_id", async (req, res) => {
   const { device_id } = req.params;
   try {
@@ -504,6 +514,6 @@ app.get("/pending-notifications/:device_id", async (req, res) => {
   }
 });
 
-// ─── Start Server ─────────────────────────────────────────────────────────────
+// ─── Start Server ───────────────────────────────────────────────────────────
 const port = process.env.PORT || 5001;
 server.listen(port, () => console.log(`[Server] Running on port ${port}`));
