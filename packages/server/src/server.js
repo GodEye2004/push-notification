@@ -487,4 +487,6 @@ app.get("/pending-notifications/:device_id", async (req, res) => {
 
 // ─── Start Server ───────────────────────────────────────────────────────────
 const port = process.env.PORT || 5001;
-server.listen(port, () => console.log(`[Server] Running on port ${port}`));
+server.listen(port, '0.0.0.0', () =>
+  console.log(`[Server] Running on http://0.0.0.0:${port}`)
+);
