@@ -7,64 +7,34 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const mongoose = require("mongoose");
+const fs = require("fs");
 const admin = require("firebase-admin");
-
 // Load environment variables from the correct path
 require("dotenv").config({ path: path.join(__dirname, "../.env") });
+
+try {
+  const serviceAccountPath = path.join(
+    process.cwd(),
+    "../config",
+    "service-account-key.json",
+  );
+  const serviceAccount = JSON.parse(
+    fs.readFileSync(serviceAccountPath, "utf8"),
+  );
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+  console.log("firebase admin sdk inialized from json file");
+} catch (error) {
+  console.log("Firebase initialized faeiled", error.message);
+}
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*" },
 });
-
-// ─── Firebase Admin SDK ─────────────────────────────────────────────────────
-try {
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-  if (!privateKey) {
-    throw new Error(
-      "FIREBASE_PRIVATE_KEY is missing from environment variables.",
-    );
-  }
-  // If the key contains literal backslash-n (from a single-line .env), convert them to real newlines
-  privateKey = privateKey.replace(/\\n/g, "\n");
-
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: privateKey,
-    }),
-  });
-
-  console.log(
-    "[Firebase] Admin SDK initialized correctly using environment variables.",
-  );
-} catch (error) {
-  console.error("[Firebase] initializeApp failed:", error.message);
-  if (process.env.FIREBASE_PRIVATE_KEY) {
-    console.log(
-      "Key starts with:",
-      process.env.FIREBASE_PRIVATE_KEY.substring(0, 20),
-    );
-  }
-  // Depending on your deployment strategy, you might want to exit here
-  // process.exit(1);
-}
-
-// ─── Debug: log key info (optional, remove in production) ─────────────────
-console.log(
-  "Key starts with:",
-  process.env.FIREBASE_PRIVATE_KEY?.substring(0, 30),
-);
-console.log(
-  "Key contains newline characters:",
-  process.env.FIREBASE_PRIVATE_KEY?.includes("\n"),
-);
-console.log(
-  "Key contains literal slash-n:",
-  process.env.FIREBASE_PRIVATE_KEY?.includes("\\n"),
-);
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -112,6 +82,7 @@ const Notification = require("./models/Notification");
 const User = require("./models/User");
 const OTP = require("./models/OTP");
 const kavenegarService = require("./utils/kavenegar");
+const { error } = require("console");
 
 const connectDB = async () => {
   try {
