@@ -7,7 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -100,7 +100,7 @@ class PushNotificationService {
       deviceId = 'unknown_${DateTime.now().millisecondsSinceEpoch}';
     }
 
-    await prefs.setString(_deviceIdKey, deviceId!);
+    await prefs.setString(_deviceIdKey, deviceId);
     return deviceId;
   }
 
@@ -381,9 +381,9 @@ void _initSocket(
   String appVersion,
   String? fcmToken,
 ) {
-  final socket = IO.io(
+  final socket = io.io(
     serverUrl,
-    IO.OptionBuilder()
+    io.OptionBuilder()
         .setTransports(['websocket', 'polling'])
         .enableAutoConnect()
         // Send deviceId in auth so server joins us to the correct room
