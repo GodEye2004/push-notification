@@ -231,8 +231,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.11.0",
+  "generatorVersion": "3.11.4",
   "flutterRoot": "file:///Users/mohammadmahdi/developmnt/flutter",
-  "flutterVersion": "3.41.0",
+  "flutterVersion": "3.41.6",
   "pubCache": "file:///Users/mohammadmahdi/.pub-cache"
 }
