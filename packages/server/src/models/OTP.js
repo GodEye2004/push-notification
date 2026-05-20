@@ -7,3 +7,6 @@ const OTPSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('OTP', OTPSchema);
+
+
+//  sent , store user otp.

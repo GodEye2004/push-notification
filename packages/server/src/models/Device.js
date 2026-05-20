@@ -15,3 +15,6 @@ const DeviceSchema = new mongoose.Schema({
 DeviceSchema.index({ app_id: 1, device_id: 1 }, { unique: true });
 
 module.exports = mongoose.model('Device', DeviceSchema);
+
+
+// this is for introduce user device for mongo.

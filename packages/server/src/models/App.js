@@ -9,3 +9,5 @@ const ApplicationSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Application', ApplicationSchema);
+
+//  this is for store datat in mongo db.

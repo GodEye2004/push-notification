@@ -12,7 +12,7 @@ void main() async {
 
   await PushNotificationService().initialize(
     serverUrl: "http://172.18.4.141:5001",
-    appId: "05bfb8b7-5b98-4497-b0e6-ce4d40bce041",
+    appId: "7cf304fe-44ed-47df-b558-43dd462579e8",
     deviceModel: "Flutter Demo",
     appVersion: "1.0.0",
   );

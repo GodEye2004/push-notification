@@ -386,8 +386,9 @@ void _initSocket(
     io.OptionBuilder()
         .setTransports(['websocket', 'polling'])
         .enableAutoConnect()
-        // Send deviceId in auth so server joins us to the correct room
+        // Send deviceId in both auth and query parameters for compatibility
         .setAuth({'deviceId': deviceId})
+        .setQuery({'deviceId': deviceId})
         .build(),
   );
 

@@ -17,3 +17,6 @@ const NotificationSchema = new mongoose.Schema({
 NotificationSchema.index({ device_id: 1, status: 1 });
 
 module.exports = mongoose.model("Notification", NotificationSchema);
+
+
+//  save notification datat in mongo db.
